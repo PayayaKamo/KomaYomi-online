@@ -240,7 +240,13 @@ export async function loadLibrary(): Promise<Library | null> {
             filenames[lang] = entry.name;
           }
         }
-        const warnings = entries.length ? [] : page.warnings;
+        const warnings: string[] = [];
+        for (const lang of volume.languages) {
+          if (files[lang]) continue;
+          if (entries.some((entry) => entry.lang === lang)) {
+            warnings.push(`Page ${page.index + 1} has no image for language "${lang}".`);
+          }
+        }
         pages.push({
           ...page,
           files,
@@ -522,8 +528,8 @@ export async function importProjectFile(file: File, options: ImportOptions = {})
   await kvSet(KEY_LIBRARY, { library });
   await kvDel(KEY_LANG_ORDER);
   cachedMeta = meta;
+  // `buildLibrary` already created the object URLs, so keep its cache warm.
   cachedLibrary = null;
-  releaseImageUrls();
 
   return {
     meta,
@@ -582,7 +588,11 @@ function buildLibrary(manifest: ProjectManifest, config: LibraryConfig, records:
     const chapters = [...chapterIds].sort(naturalCompare).map((chapterId) => {
       const chapterOverride = override.chapters?.[chapterId] ?? {};
       const chapterImages = images.filter((image) => image.chapter === chapterId);
-      const maxPage = chapterImages.reduce((max, image) => Math.max(max, image.pageIndex), -1);
+      const declaredPages = inventoryVolume?.chapters?.find((item) => item.chapter === chapterId)?.pages ?? 0;
+      const maxPage = Math.max(
+        declaredPages - 1,
+        chapterImages.reduce((max, image) => Math.max(max, image.pageIndex), -1),
+      );
       const pages: PageEntry[] = [];
       for (let index = 0; index <= maxPage; index += 1) {
         const files: Partial<Record<Lang, string>> = {};
