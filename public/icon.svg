@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="KomaYomi">
+  <rect width="512" height="512" rx="112" fill="#12141a"/>
+  <g fill="none" stroke="#f07a4d" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="96" y="96" width="320" height="320" rx="28"/>
+    <path d="M256 96v320"/>
+    <path d="M256 256h160"/>
+    <path d="M96 256h160"/>
+  </g>
+</svg>

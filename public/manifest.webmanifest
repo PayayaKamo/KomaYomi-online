@@ -1,0 +1,38 @@
+{
+  "name": "KomaYomi Online",
+  "short_name": "KomaYomi",
+  "description": "Open .mnproj manga projects, compare languages, annotate and export — entirely in your browser.",
+  "lang": "en",
+  "start_url": "/KomaYomi-online/",
+  "scope": "/KomaYomi-online/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#12141a",
+  "theme_color": "#f07a4d",
+  "icons": [
+    {
+      "src": "/KomaYomi-online/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/KomaYomi-online/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/KomaYomi-online/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/KomaYomi-online/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

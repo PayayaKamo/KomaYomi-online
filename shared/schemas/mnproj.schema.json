@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://manga-memo.dev/schemas/mnproj.schema.json",
+  "title": "KomaYomi .mnproj manifest.json",
+  "description": "工程包 .mnproj 内部的 manifest.json；旧文件可以没有 $schema，但仍需 schemaVersion。",
+  "type": "object",
+  "required": ["schemaVersion", "storageMode", "language", "inventory"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "integer", "minimum": 0 },
+    "appVersion": { "type": "string" },
+    "createdAt": { "type": "string" },
+    "updatedAt": { "type": "string" },
+    "storageMode": { "enum": ["reference", "packaged"] },
+    "name": { "type": "string" },
+    "language": {
+      "type": "object",
+      "required": ["volumes", "resolved"],
+      "properties": {
+        "volumes": { "$ref": "#/$defs/langDirMap" },
+        "resolved": { "$ref": "#/$defs/langDirMap" }
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "required": ["volumes", "images"],
+      "properties": {
+        "volumes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["volume", "chapters"],
+            "properties": {
+              "volume": { "type": "string", "minLength": 1 },
+              "languages": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 }
+              },
+              "langDirs": { "$ref": "#/$defs/langDirs" },
+              "chapters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["chapter"],
+                  "properties": {
+                    "chapter": { "type": "string" },
+                    "pages": { "type": "integer", "minimum": 0 },
+                    "images": { "type": "integer", "minimum": 0 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pageCount": { "type": "integer", "minimum": 0 },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["volume", "chapter", "pageIndex", "lang", "name"],
+            "properties": {
+              "volume": { "type": "string", "minLength": 1 },
+              "chapter": { "type": "string", "minLength": 1 },
+              "pageIndex": { "type": "integer", "minimum": 0 },
+              "lang": { "type": "string", "minLength": 1 },
+              "name": { "type": "string", "minLength": 1 },
+              "sha1": { "type": "string" },
+              "size": { "type": "integer", "minimum": 0 },
+              "path": { "type": "string" },
+              "asset": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "object",
+      "properties": {
+        "pages": { "type": "integer", "minimum": 0 },
+        "noteCount": { "type": "integer", "minimum": 0 },
+        "annotationCount": { "type": "integer", "minimum": 0 },
+        "text": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "langDirs": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "langDirMap": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/langDirs" }
+    }
+  }
+}

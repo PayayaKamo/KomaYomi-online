@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://manga-memo.dev/schemas/mnexp.schema.json",
+  "title": "KomaYomi .mnexp export template",
+  "description": "HTML / PDF / PNG 导出的版式与样式模板，对应 data/templates/export.json 里的单个 ExportTemplate。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schemaVersion", "kind", "id", "name", "createdAt", "config"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "integer", "minimum": 0 },
+    "appVersion": { "type": "string" },
+    "kind": { "const": "mnexp" },
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string" },
+    "config": {
+      "type": "object",
+      "properties": {
+        "template": { "enum": ["two-column", "stack", "compare-wide"] },
+        "title": { "type": "string" },
+        "volume": { "type": "string" },
+        "chapter": { "type": "string" },
+        "pageIndices": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "languages": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "embedImages": { "type": "boolean" },
+        "offsets": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/offset" }
+        },
+        "showPanelBoxes": { "type": "boolean" },
+        "includeNotes": { "type": "boolean" },
+        "onlyWithNotes": { "type": "boolean" },
+        "noteFilterTags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "pageWidthRatio": { "type": "number" },
+        "columnGap": { "type": "number" },
+        "fontScale": { "type": "number" },
+        "columns": { "type": "number" }
+      }
+    }
+  },
+  "$defs": {
+    "offset": {
+      "type": "object",
+      "required": ["x", "y", "scale"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "scale": { "type": "number" }
+      }
+    }
+  }
+}

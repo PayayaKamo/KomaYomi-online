@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://manga-memo.dev/schemas/mnhistory.schema.json",
+  "title": "KomaYomi page version history .mnhistory",
+  "description": "跨会话的页面版本历史：data/history/<volume>/<chapter>/<page>.json。每条记录保存完整 PageDoc 快照、来源和结构化差异。",
+  "type": "object",
+  "required": ["$schema", "schemaVersion", "kind", "volume", "chapter", "pageIndex", "entries"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "integer", "minimum": 0 },
+    "kind": { "const": "mnhistory" },
+    "appVersion": { "type": "string" },
+    "volume": { "type": "string", "minLength": 1 },
+    "chapter": { "type": "string", "minLength": 1 },
+    "pageIndex": { "type": "integer", "minimum": 0 },
+    "entries": {
+      "type": "array",
+      "description": "Oldest first; the newest entry mirrors the current page state.",
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "diff": {
+      "type": "object",
+      "required": [
+        "panels",
+        "panelsDelta",
+        "added",
+        "removed",
+        "moved",
+        "resized",
+        "annotations",
+        "annotationsDelta",
+        "notes",
+        "notesDelta"
+      ],
+      "properties": {
+        "panels": { "type": "integer", "minimum": 0 },
+        "panelsDelta": { "type": "integer" },
+        "added": { "type": "integer", "minimum": 0 },
+        "removed": { "type": "integer", "minimum": 0 },
+        "moved": { "type": "integer", "minimum": 0 },
+        "resized": { "type": "integer", "minimum": 0 },
+        "annotations": { "type": "integer", "minimum": 0 },
+        "annotationsDelta": { "type": "integer" },
+        "notes": { "type": "integer", "minimum": 0 },
+        "notesDelta": { "type": "integer" }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["id", "at", "source", "summary", "diff", "editCount", "doc"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "at": { "type": "string", "minLength": 1 },
+        "source": {
+          "type": "string",
+          "enum": ["auto", "manual", "batch", "template", "align", "annotation", "import", "restore", "detect"]
+        },
+        "summary": { "type": "string" },
+        "diff": { "$ref": "#/$defs/diff" },
+        "editCount": { "type": "integer", "minimum": 0 },
+        "doc": { "type": "object" }
+      }
+    }
+  }
+}

@@ -1,0 +1,84 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://manga-memo.dev/schemas/mntpl.schema.json",
+  "title": "KomaYomi .mntpl layout template",
+  "description": "可跨漫画复用的声明式版式模板；不包含 volume/chapter/pageIndex 绑定，导入时由调用方绑定。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schemaVersion", "kind", "id", "name", "scope", "grid"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "integer", "minimum": 0 },
+    "appVersion": { "type": "string" },
+    "kind": { "const": "mntpl" },
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "scope": { "const": "template" },
+    "readingDirection": {
+      "enum": ["rtl", "ltr", "ttb", "horizontal-rl", "horizontal-lr", "vertical-rl", "vertical-lr"]
+    },
+    "margin": { "$ref": "#/$defs/margin" },
+    "gap": { "type": "number" },
+    "colWeights": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "grid": { "$ref": "#/$defs/grid" },
+    "pageOverrides": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "grid": { "$ref": "#/$defs/grid" },
+          "margin": { "$ref": "#/$defs/margin" },
+          "gap": { "type": "number" },
+          "colWeights": {
+            "type": "array",
+            "items": { "type": "number" }
+          }
+        }
+      }
+    },
+    "createdAt": { "type": "string" },
+    "notes": { "type": "string" }
+  },
+  "$defs": {
+    "margin": {
+      "type": "object",
+      "properties": {
+        "top": { "type": "number" },
+        "right": { "type": "number" },
+        "bottom": { "type": "number" },
+        "left": { "type": "number" }
+      }
+    },
+    "grid": {
+      "type": "object",
+      "required": ["cols", "rows"],
+      "properties": {
+        "cols": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["cells"],
+            "properties": {
+              "height": { "type": "number" },
+              "cells": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "span": { "type": "integer", "minimum": 1 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

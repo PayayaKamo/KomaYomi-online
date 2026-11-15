@@ -1,0 +1,182 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://manga-memo.dev/schemas/page.schema.json",
+  "title": "KomaYomi single page .mnpage.json",
+  "description": "单页导出格式：在 data/pages/... 的 PageDoc 上追加 $schema / schemaVersion / kind。旧页面 JSON 没有 envelope 时按 v0 迁移。",
+  "type": "object",
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "kind",
+    "volume",
+    "chapter",
+    "pageIndex",
+    "panels",
+    "notes",
+    "offsets",
+    "alignMode",
+    "panelOffsets",
+    "readingDirection",
+    "updatedAt"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "integer", "minimum": 0 },
+    "kind": { "const": "page" },
+    "appVersion": { "type": "string" },
+    "volume": { "type": "string", "minLength": 1 },
+    "chapter": { "type": "string", "minLength": 1 },
+    "pageIndex": { "type": "integer", "minimum": 0 },
+    "panels": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/panel" }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/note" }
+    },
+    "offsets": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/offset" }
+    },
+    "alignMode": { "enum": ["page", "panel", "anchors", "grid"] },
+    "panelOffsets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "$ref": "#/$defs/offset" }
+      }
+    },
+    "gridStep": { "type": "number" },
+    "readingDirection": {
+      "enum": ["rtl", "ltr", "ttb", "horizontal-rl", "horizontal-lr", "vertical-rl", "vertical-lr"]
+    },
+    "updatedAt": { "type": "string" },
+    "detectorVersion": { "type": "string" },
+    "detectedAt": { "type": "string" },
+    "detectSource": { "enum": ["auto", "template", "plugin", "manual"] },
+    "editCount": { "type": "integer", "minimum": 0 },
+    "lastEditedAt": { "type": "string" },
+    "lastEditSummary": { "type": "string" },
+    "groups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/group" }
+    },
+    "annotations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/annotation" }
+    },
+    "annotationsVisible": { "type": "boolean" }
+  },
+  "$defs": {
+    "offset": {
+      "type": "object",
+      "required": ["x", "y", "scale"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "scale": { "type": "number" }
+      }
+    },
+    "panel": {
+      "type": "object",
+      "required": ["id", "rect"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "rect": {
+          "type": "object",
+          "required": ["x", "y", "w", "h"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "w": { "type": "number" },
+            "h": { "type": "number" }
+          }
+        },
+        "source": { "enum": ["auto", "manual", "merged"] },
+        "number": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "note": {
+      "type": "object",
+      "required": ["id", "scope", "text", "createdAt", "updatedAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "scope": { "enum": ["page", "panel"] },
+        "panelId": { "type": ["string", "null"] },
+        "text": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "url": { "type": "string" },
+            "text": { "type": "string" }
+          }
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "dataUrl"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "dataUrl": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "group": {
+      "type": "object",
+      "required": ["id", "panelIds"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "panelIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "number": { "type": "integer", "minimum": 1 },
+        "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+      }
+    },
+    "annotation": {
+      "type": "object",
+      "required": ["id", "kind", "scope", "points", "createdAt", "updatedAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": ["arrow", "rect", "ellipse", "highlight", "text", "badge", "mosaic", "pen"]
+        },
+        "scope": { "enum": ["page", "panel"] },
+        "panelId": { "type": ["string", "null"] },
+        "points": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["x", "y"],
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            }
+          }
+        },
+        "color": { "type": "string" },
+        "width": { "type": "number" },
+        "opacity": { "type": "number" },
+        "text": { "type": "string" },
+        "fontSize": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    }
+  }
+}
