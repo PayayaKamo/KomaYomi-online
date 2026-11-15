@@ -74,4 +74,4 @@ No third-party manga, scans or copyrighted material is included in this reposito
 
 ## License
 
-MIT, same as KomaYomi.
+Released under the [MIT License](LICENSE), same as [KomaYomi](https://github.com/PayayaKamo/KomaYomi).
