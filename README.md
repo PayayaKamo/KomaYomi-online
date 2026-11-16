@@ -1,41 +1,28 @@
 # KomaYomi Online
 
-A static, browser-only edition of [KomaYomi](https://github.com/PayayaKamo/KomaYomi) — open a `.mnproj` project, read a chapter in several languages side by side, draw panels, write page and panel notes, and export the result. Everything runs in the browser; there is no server and nothing is uploaded.
+A static, browser-only edition of [KomaYomi](https://github.com/PayayaKamo/KomaYomi): open a `.mnproj` project, read a chapter in several languages side by side, draw panels, write page and panel notes, and export the result — no server, no install, nothing uploaded.
 
-**Live:** <https://payayakamo.github.io/KomaYomi-online/>
+## Try it
 
-Try it in two clicks: open the site, click **Sample project**, then **Open**. The bundled demo uses original, programmatically drawn artwork.
+**<https://payayakamo.github.io/KomaYomi-online/>**
 
-## What works
+1. Open the site.
+2. Click **Sample project**, then **Open**.
 
-- **Open `.mnproj` projects** — both `packaged` projects (images inside the archive) and `reference` projects (paths only; attach the original image folder during import to see the pages).
-- **Browse** volumes, chapters and pages from the project inventory.
-- **Compare view** — several languages side by side, zoom and alignment helpers.
-- **Panel workbench** — inspect, move, resize, add and delete panels by hand; edit coordinates; reorder and group panels.
-- **Notes** — page and panel notes, tags, Markdown, links, annotations.
-- **Export** — a single self-contained HTML file (optionally with print-on-open CSS) or PNG of the whole page / one panel / a three-language collage.
-- **Save** the open project back to `.mnproj`, packaged (with images) or reference (structure and notes only).
+The bundled demo uses original, programmatically drawn artwork, so you can look around without preparing any files.
 
-## Boundaries of the online edition
+## Run it locally
 
-| Capability | Online | Local edition |
-| --- | --- | --- |
-| Open `.mnproj` | Yes | Yes |
-| Scan a manga folder / build a library from disk | No | Yes |
-| Automatic panel detection | No (draw panels by hand) | Yes |
-| WebDAV, backups, scheduled jobs, plugins | No | Yes |
-| Template exchange files | No | Yes |
-| Project storage | This browser's IndexedDB | Your disk |
+```bash
+pnpm install
+pnpm dev        # http://localhost:5173/KomaYomi-online/
+```
 
-- **Your data lives in this browser.** Notes and panel edits are written to IndexedDB. Clearing site data, using a different browser or a private window means starting over.
-- **Always download the project before switching devices.** The File menu (or the project dialog) can export a packaged `.mnproj` that you can open anywhere.
-- **No directory scanning and no automatic panel detection.** Those need filesystem access and a server-side worker; the UI hides or labels them as local-only.
-- **Reference projects need their images attached.** A reference `.mnproj` only records where the images were; pick that folder in the import dialog to link the pages, otherwise pages appear with a missing-image placeholder.
+Other scripts: `pnpm build` (type-check + static build into `dist/`), `pnpm preview` (serve the production build).
 
 ## The KomaYomi ecosystem
 
-KomaYomi ships in four forms that share the same `.mnproj` project format, so a project
-opened in one form can be exported and opened in another:
+KomaYomi ships in four forms that share the same `.mnproj` project format, so a project opened in one form can be exported and opened in another:
 
 | Repository | Role |
 | --- | --- |
@@ -44,24 +31,37 @@ opened in one form can be exported and opened in another:
 | [KomaYomi-mobile](https://github.com/PayayaKamo/KomaYomi-mobile) | The React Native mobile edition for reading on phones and tablets. |
 | [KomaYomi-docs](https://github.com/PayayaKamo/KomaYomi-docs) | The documentation site, generated automatically by CI from the desktop repository. |
 
-**What differs in this edition.** Everything runs in the browser: project data lives in
-IndexedDB, images are object URLs, and exports are downloads. That removes the server-side
-capabilities (directory scanning, automatic detection, scheduled backups, storage sync)
-but keeps reading, panel editing, notes, annotations and export. Every change is written
-back into the same `.mnproj` document model the desktop and mobile editions use.
+## What it can do
 
-## Development
+- **Open `.mnproj` projects** — both `packaged` projects (images inside the archive) and `reference` projects (paths only; attach the original image folder during import to see the pages).
+- **Browse** volumes, chapters and pages from the project inventory.
+- **Compare view** — several languages side by side, zoom and alignment helpers.
+- **Original view** — the untouched page image per language, with wheel zoom, drag and linked panes.
+- **Panel detail** — step through panels and pages, with the crop, notes and annotations for one panel.
+- **Panel workbench** — inspect, move, resize, add and delete panels by hand; edit coordinates; reorder and group panels.
+- **Notes** — page and panel notes, tags, Markdown, links, annotations.
+- **Read mode** — a read-only switch that hides and blocks every editing path.
+- **Export** — a single self-contained HTML file (optionally with print-on-open CSS) or PNG of the whole page / one panel / a three-language collage.
+- **Save** the open project back to `.mnproj`, packaged (with images) or reference (structure and notes only).
 
-```bash
-pnpm install
-pnpm dev        # http://localhost:5173/KomaYomi-online/
-pnpm build      # type-check + static build into dist/
-pnpm preview    # serve the production build locally
-```
+## Details
 
-The build is configured for the `/KomaYomi-online/` sub-path in `vite.config.ts`, which is what GitHub Pages uses for a project site. Change `base` there if you deploy under a different path or domain.
+### How data is stored
 
-### Project structure
+- **Everything stays in the browser.** Project data lives in IndexedDB, images are object URLs, and exports are downloads. Every change is written back into the same `.mnproj` document model the desktop and mobile editions use.
+- **Your data lives in this browser.** Notes and panel edits are written to IndexedDB. Clearing site data, using a different browser or a private window means starting over.
+- **Download the project before switching devices.** The File menu (or the project dialog) can export a packaged `.mnproj` that you can open anywhere.
+- **Reference projects need their images attached.** A reference `.mnproj` only records where the images were; pick that folder in the import dialog to link the pages, otherwise pages appear with a missing-image placeholder.
+
+### What the online edition can't do
+
+- **No folder scanning or library building from disk** — those need filesystem access; the UI hides them.
+- **No automatic panel detection** — draw panels by hand instead.
+- **No WebDAV, backups, scheduled jobs, plugins or template exchange files** — all local-only.
+- **No disk storage** — projects live in this browser's IndexedDB rather than on your disk.
+- **Read mode is a front-end guard, not a security boundary** — it blocks every write path in the UI, but there is no server to enforce it.
+
+### Repository layout
 
 ```text
 src/                 React UI (copied from KomaYomi, trimmed for the static edition)
@@ -86,10 +86,12 @@ node scripts/make-sample.mjs
 
 No third-party manga, scans or copyrighted material is included in this repository.
 
-## Deployment
+### Deployment
 
 `.github/workflows/deploy.yml` builds on every push to `main` and publishes `dist` with the official GitHub Pages actions. One-time setup in the repository: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
-## License
+The build is configured for the `/KomaYomi-online/` sub-path in `vite.config.ts`, which is what GitHub Pages uses for a project site. Change `base` there if you deploy under a different path or domain.
+
+### License
 
 Released under the [MIT License](LICENSE), same as [KomaYomi](https://github.com/PayayaKamo/KomaYomi).
