@@ -59,10 +59,12 @@ function isTableStart(lines: string[], i: number): boolean {
 /** `<div align="center">…</div>` is the only block HTML the editor emits, for text alignment. */
 const ALIGN_RE = /^\s*<div align="(left|center|right)">(.*)<\/div>\s*$/;
 
+const FENCE_RE = /^```(\w*)\s*$/;
+
 function isBlockStart(lines: string[], i: number): boolean {
   const line = lines[i];
   if (ALIGN_RE.test(line)) return true;
-  if (/^```/.test(line)) return true;
+  if (FENCE_RE.test(line)) return true;
   if (/^#{1,6}\s+/.test(line)) return true;
   if (/^\s*([-*_])\s*(\1\s*){2,}$/.test(line)) return true;
   if (/^\s*>/.test(line)) return true;
@@ -161,7 +163,7 @@ function blocks(lines: string[]): string[] {
       continue;
     }
 
-    const fence = line.match(/^```(\w*)\s*$/);
+    const fence = line.match(FENCE_RE);
     if (fence) {
       const lang = fence[1];
       const buf: string[] = [];
@@ -226,6 +228,14 @@ function blocks(lines: string[]): string[] {
     while (i < lines.length && lines[i].trim() && !isBlockStart(lines, i)) {
       para.push(lines[i]);
       i++;
+    }
+    if (!para.length) {
+      // Defensive: every block marker above must consume its input. If a future marker
+      // is recognized by isBlockStart but not handled yet, degrade it to plain text and
+      // advance so malformed markdown can never stall the render loop.
+      out.push(`<p>${inline(lines[i])}</p>`);
+      i++;
+      continue;
     }
     out.push(`<p>${inline(para.join('\n')).replace(/\n/g, '<br />')}</p>`);
   }
