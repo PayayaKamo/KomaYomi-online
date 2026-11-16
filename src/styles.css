@@ -3819,10 +3819,46 @@ body.pane-resizing * {
   }
 }
 
+/*
+ * Tablets / small laptops: the top bar has more controls than fit on one line once the
+ * breadcrumb and the save chip are both showing. Wrap it into two rows instead of
+ * squeezing the crumb to a few pixels (which clipped the labels mid-word).
+ */
+@media (max-width: 1180px) {
+  :root {
+    --topbar-h: 80px;
+  }
+
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    height: auto;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 6px 10px;
+  }
+
+  .tb-left {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .tb-center {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+  }
+
+  .tb-right {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
 /* Phone: compress the top bar and toolbars further */
 @media (max-width: 720px) {
   :root {
-    --topbar-h: 92px;
+    --topbar-h: 100px;
   }
 
   .topbar {
@@ -3919,12 +3955,20 @@ body.pane-resizing * {
     min-width: 0;
   }
 
-  .save-state {
+  .tb-right .tb-select.wide {
     display: none;
   }
 
-  .tb-right .tb-select.wide {
-    display: none;
+  /*
+   * Very narrow phones: keep the page number in the top bar and leave volume/chapter
+   * switching to the sidebar drawer, so nothing gets clipped mid-word.
+   */
+  @media (max-width: 520px) {
+    .crumb-ch,
+    .crumb-ch + .crumb-sep,
+    .crumb .page-nav {
+      display: none;
+    }
   }
 
   .notes-col {
@@ -5604,13 +5648,6 @@ kbd {
   }
 }
 
-.online-chip {
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .local-only-chip {
   align-self: center;
   font-size: 11px;
@@ -6025,3 +6062,334 @@ kbd {
   }
 }
 
+
+/* ---------------- note categories ---------------- */
+/*
+ * Category colour lives in `--type-color` (set inline from shared/noteTypes.ts).
+ * Chips tint at 16%, cards at 8% with a 3px solid rail on the left.
+ */
+.note-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--panel);
+  font-size: 10.5px;
+  line-height: 17px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.note-type-chip > i {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--type-color, var(--muted));
+}
+
+.note-type-chip > em {
+  font-style: normal;
+  font-size: 9px;
+  opacity: 0.65;
+}
+
+button.note-type-chip:hover {
+  border-color: var(--type-color, var(--line));
+  color: var(--text);
+}
+
+.note-type-chip.on {
+  border-color: color-mix(in srgb, var(--type-color, var(--accent)) 55%, transparent);
+  background: color-mix(in srgb, var(--type-color, var(--accent)) 16%, transparent);
+  color: var(--text);
+}
+
+.note-type-row,
+.note-type-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.note-type-row {
+  margin-bottom: 6px;
+}
+
+.note-type-filter {
+  padding: 8px 12px 0;
+}
+
+.note-type-surface {
+  background: color-mix(in srgb, var(--type-color, transparent) 8%, var(--panel));
+  border-color: color-mix(in srgb, var(--type-color, var(--line)) 22%, var(--line-soft));
+}
+
+.note-type-surface::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--type-color, transparent);
+  border-radius: 8px 0 0 8px;
+  pointer-events: none;
+}
+
+.note.note-type-surface,
+.pd-note.note-type-surface {
+  position: relative;
+  padding-left: 14px;
+}
+
+/* Compare-view panel notes: folded summary, markdown body, inline editor. */
+.panel-notes-wrap {
+  min-width: 0;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+}
+
+.panel-notes-tools {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.panel-notes {
+  margin: 0;
+  padding: 0;
+  border-top: 0;
+  gap: 6px;
+}
+
+.panel-notes li.panel-note {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 5px 8px 5px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 11.5px;
+  color: var(--text-2);
+  cursor: text;
+}
+
+.panel-notes li.panel-note::before {
+  border-radius: 7px 0 0 7px;
+}
+
+.panel-note-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.panel-note-head .note-type-chip {
+  flex: 0 0 auto;
+}
+
+.panel-note-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-2);
+}
+
+.panel-note-caret {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.panel-note-body {
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.panel-note-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.panel-note-editor {
+  margin-top: 6px;
+  min-width: 0;
+}
+
+.panel-note-editor textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 6px 8px;
+  resize: vertical;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  line-height: 1.55;
+  outline: none;
+}
+
+.panel-note-editor textarea:focus {
+  border-color: rgba(240, 122, 77, 0.55);
+}
+
+.panel-note-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* ---------------- sidebar page-list layouts ---------------- */
+.sidebar-head-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sidebar-head-row .root-path {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.page-list-modes {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.page-list-mode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.page-list-mode:hover {
+  color: var(--text);
+  border-color: var(--line);
+  background: var(--hover);
+}
+
+.page-list-mode.is-active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.page-list-mode:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+.page-grid.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+
+.page-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.page-row:hover {
+  background: var(--hover);
+}
+
+.page-row.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.page-row:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+.page-row-no {
+  flex: 0 0 30px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.page-row-langs {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-width: 0;
+}
+
+.page-row-lang {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--panel-3);
+  color: var(--text-3);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.page-row-lang.is-missing {
+  background: transparent;
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.page-row-missing {
+  color: var(--danger-text);
+  font-size: 10px;
+}
+
+.page-row-notes {
+  flex: 0 0 auto;
+  color: var(--warn);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-row-warn {
+  color: var(--warn);
+  font-style: normal;
+  font-weight: 700;
+}

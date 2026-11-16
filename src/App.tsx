@@ -700,7 +700,14 @@ export default function App() {
               onStep={goPage}
             />
           )}
-          {doc && <span className={`save-state ${pageState.dirty ? 'dirty' : ''}`}>{saveLabel}</span>}
+          {doc && (
+            <span
+              className={`save-state ${pageState.dirty ? 'dirty' : ''}`}
+              title={`${saveLabel} · ${t('online.dataNote')}`}
+            >
+              {saveLabel}
+            </span>
+          )}
           {readOnly && (
             <span className="ro-chip" title={t('mode.readOnlyHint')}>
               {t('mode.readBadge')}
@@ -717,11 +724,6 @@ export default function App() {
             >
               {outbox.syncing ? t('outbox.syncing') : t('outbox.pending', { count: formatNumber(outbox.count) })}
             </button>
-          )}
-          {sel && (
-            <span className="pwa-chip online-chip" title={t('online.dataNote')}>
-              {t('online.banner')}
-            </span>
           )}
         </div>
 
@@ -946,6 +948,7 @@ export default function App() {
                 onDetailNextPanel={detailNextPanel}
                 onDetailPrevPage={detailPrevPage}
                 onDetailNextPage={detailNextPage}
+                noteTypes={library?.noteTypes}
                 readOnly={readOnly}
               />
             ) : (
@@ -971,6 +974,7 @@ export default function App() {
           mutate={pageState.mutate}
           tagStats={tagStats}
           library={library}
+          languages={langs}
           onJump={jumpTo}
           onClose={() => setNotesOpen(false)}
           readOnly={readOnly}

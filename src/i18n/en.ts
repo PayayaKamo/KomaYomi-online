@@ -20,8 +20,8 @@ export const en = {
   'app.tabCompare': 'Compare',
   'app.tabOriginal': 'Original',
   'app.saveSaving': 'Saving…',
-  'app.saveUnsaved': 'Unsaved changes',
-  'app.savePending': 'Pending save',
+  'app.saveUnsaved': 'Unsaved',
+  'app.savePending': 'Pending',
   'app.saveSaved': 'Saved',
   'app.leaveUnsaved':
     'This page has unsaved changes. Save them before switching pages? Cancel stays here; use × to discard.',
@@ -187,6 +187,11 @@ export const en = {
   'sidebar.addManga': '＋ Add manga',
   'sidebar.singleChapter': 'Single chapter',
   'sidebar.missingImage': 'Missing',
+  'sidebar.pageListLayout': 'Page list layout',
+  'sidebar.pageListGrid': 'Two-column thumbnails',
+  'sidebar.pageListSingle': 'Single-column thumbnails',
+  'sidebar.pageListList': 'List view',
+  'sidebar.langMissing': '{lang} missing',
   'sidebar.addMangaTitle': 'Add manga folder',
   'sidebar.addMangaShort': '＋ Manga',
   'sidebar.langsUnconfigured': 'Not configured',
@@ -323,6 +328,12 @@ export const en = {
   'notes.copyContext': 'Copy context',
   'notes.copyContextTitle': 'Copy volume/chapter/page/panel and this note',
   'notes.filterByTag': 'Filter by tag',
+  'notes.type.background': 'Background',
+  'notes.type.vocab': 'Vocabulary',
+  'notes.type.rant': 'Reaction',
+  'notes.typeLanguage': '{lang} note',
+  'notes.typeLabel': 'Note category',
+  'notes.typeAll': 'All',
   'notes.toggleSource': 'Switch between rendered output and Markdown source',
   'notes.markdownPlaceholder': 'Markdown note…',
   'notes.scratchTitle': 'Scratchpad',
@@ -628,6 +639,10 @@ export const en = {
   'compare.maskDefaultsHint':
     'Checked languages start masked when masking is on; the preference is saved automatically and exports never include masks.',
   'compare.noteCount': '{count} notes',
+  'compare.notesExpandAll': 'Expand all',
+  'compare.notesCollapseAll': 'Collapse all',
+  'compare.noteSave': 'Save',
+  'compare.noteCancel': 'Cancel',
 
   /* ---- alignment modes ---- */
   'align.mode.page': 'Whole-page offset',
@@ -1095,7 +1110,6 @@ export const en = {
   'about.close': 'Close',
 
   /* ---- Static / online edition ---- */
-  'online.banner': 'Online edition · data stays in this browser',
   'online.unsupported': 'This feature needs the local edition of KomaYomi.',
   'online.noProject': 'No project is open in this browser yet.',
   'online.openTitle': 'Open a project',

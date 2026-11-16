@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Annotation, AlignOffset, Lang, PageDoc, PageEntry, Panel } from '../types';
-import { langShort } from '../types';
+import type { CSSProperties } from 'react';
+import type { Annotation, AlignOffset, Lang, NoteTypeDef, PageDoc, PageEntry, Panel } from '../types';
+import { DEFAULT_NOTE_TYPE, langShort } from '../types';
 import { langLabel, useI18n } from '../i18n';
 import { renderMarkdown } from '../../shared/markdown';
+import { noteTypeColor } from '../../shared/noteTypes';
 import { ANNOTATION_TOOLS } from './AnnotationLayer';
 import { AnnotationOverlay } from './AnnotationOverlay';
 import { NoteAnchorLayer } from './NoteAnchorLayer';
+import { NoteTypeChip } from './NoteTypeChip';
 import { CropLayer } from './CropLayer';
 import { useCompareLayout } from '../hooks/useCompareLayout';
 
@@ -20,6 +23,8 @@ type Props = {
   total: number;
   /** Enabled languages in the configured order; masking follows the compare view. */
   langs: Lang[];
+  /** User-defined note categories, for consistent type colours. */
+  noteTypes?: NoteTypeDef[];
   maskStyle: MaskStyle;
   isMasked: (panelId: string, lang: Lang) => boolean;
   reveal: (panelId: string, lang: Lang) => void;
@@ -58,6 +63,7 @@ export function PanelDetail({
   index,
   total,
   langs,
+  noteTypes = [],
   maskStyle,
   isMasked,
   reveal,
@@ -268,7 +274,15 @@ export function PanelDetail({
                         lang={lang}
                       />
                     </div>
-                    <NoteAnchorLayer notes={doc.notes} panel={panel} lang={lang} offset={offset} zoom={zoom} />
+                    <NoteAnchorLayer
+                      notes={doc.notes}
+                      panel={panel}
+                      lang={lang}
+                      offset={offset}
+                      zoom={zoom}
+                      languages={langs}
+                      noteTypes={noteTypes}
+                    />
                   </div>
                 ) : (
                   <div className="pane-missing">{t('compare.missingLangImage', { lang: langLabel(lang) })}</div>
@@ -298,17 +312,29 @@ export function PanelDetail({
           </h3>
           {notes.length ? (
             notes.map((note) => (
-              <article className="pd-note" key={note.id}>
-                {(note.tags.length > 0 || note.createdAt) && (
-                  <div className="pd-note-meta">
-                    {note.tags.map((tag) => (
-                      <span className="tag" key={tag}>
-                        {tag}
-                      </span>
-                    ))}
-                    <span className="note-time">{formatDate(note.createdAt)}</span>
-                  </div>
-                )}
+              <article
+                className="pd-note note-type-surface"
+                key={note.id}
+                style={
+                  {
+                    '--type-color': noteTypeColor(note.type ?? DEFAULT_NOTE_TYPE, langs, noteTypes),
+                  } as CSSProperties
+                }
+              >
+                <div className="pd-note-meta">
+                  <NoteTypeChip
+                    id={note.type ?? DEFAULT_NOTE_TYPE}
+                    languages={langs}
+                    customTypes={noteTypes}
+                    selected
+                  />
+                  {note.tags.map((tag) => (
+                    <span className="tag" key={tag}>
+                      {tag}
+                    </span>
+                  ))}
+                  <span className="note-time">{formatDate(note.createdAt)}</span>
+                </div>
                 <div className="md-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(note.text) }} />
                 {note.images?.length ? (
                   <div className="note-images">

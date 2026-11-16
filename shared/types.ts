@@ -9,6 +9,34 @@ export const BUILTIN_NOTE_TYPES = ['background', 'vocab', 'rant'] as const;
 export type BuiltinNoteType = (typeof BUILTIN_NOTE_TYPES)[number];
 export const DEFAULT_NOTE_TYPE: BuiltinNoteType = 'background';
 
+/** User-defined note category (custom categories travel with the library, not the page). */
+export type NoteTypeDef = {
+  id: string;
+  name: string;
+  /** `#rrggbb`; used by the type chips and the compare-view markers. */
+  color: string;
+};
+
+/** The single source of truth for built-in note colours. */
+export const NOTE_TYPE_COLORS: Record<BuiltinNoteType, string> = {
+  background: '#4c7dd8',
+  vocab: '#d9942c',
+  rant: '#d2574a',
+};
+
+/** Language categories follow the enabled languages and are never persisted as custom types. */
+export const LANGUAGE_NOTE_TYPE_PREFIX = 'lang:';
+export function languageNoteTypeId(lang: Lang): string {
+  return `${LANGUAGE_NOTE_TYPE_PREFIX}${lang}`;
+}
+export function isLanguageNoteType(id: string | undefined): boolean {
+  return Boolean(id && id.startsWith(LANGUAGE_NOTE_TYPE_PREFIX));
+}
+
+/** Palette offered when resolving custom categories. */
+export const NOTE_TYPE_PALETTE = ['#4c7dd8', '#d9942c', '#d2574a', '#3f9e7a', '#8a63c9', '#c05a9a', '#6b7a8f'];
+
+
 /** Chapter name used when a rule has no {chapter} placeholder (single-chapter volumes). */
 export const SINGLE_CHAPTER = '全一话';
 
@@ -371,6 +399,8 @@ export type Library = {
   languages: Lang[];
   /** User-defined language order, shared by the compare view and exports. */
   langOrder?: Lang[];
+  /** User-defined note categories; built-in and language categories are derived in the UI. */
+  noteTypes?: NoteTypeDef[];
   volumes: VolumeEntry[];
 };
 

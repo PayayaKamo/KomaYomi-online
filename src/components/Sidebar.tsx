@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ChapterEntry, Lang, Library, PageEntry, VolumeEntry } from '../types';
 import { langShort, SINGLE_CHAPTER } from '../types';
 import type { Selection } from '../hooks/usePage';
@@ -28,6 +28,59 @@ function pickFile(page: PageEntry, volume?: VolumeEntry): { url: string; lang: L
   return null;
 }
 
+/** How chapter pages are listed in the sidebar; persisted locally per browser. */
+type PageListLayout = 'grid' | 'single' | 'list';
+
+const PAGE_LIST_KEY = 'manga-memo.page-list-layout';
+
+function readPageListLayout(): PageListLayout {
+  try {
+    const saved = localStorage.getItem(PAGE_LIST_KEY);
+    if (saved === 'grid' || saved === 'single' || saved === 'list') return saved;
+  } catch {
+    // Storage can be disabled; fall through to the viewport default.
+  }
+  return window.matchMedia('(max-width: 720px)').matches ? 'single' : 'grid';
+}
+
+function PageListIcon({ name }: { name: PageListLayout }) {
+  return (
+    <svg
+      viewBox="0 0 14 14"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {name === 'grid' && (
+        <>
+          <rect x="1.6" y="1.6" width="4.6" height="4.6" rx="0.8" />
+          <rect x="7.8" y="1.6" width="4.6" height="4.6" rx="0.8" />
+          <rect x="1.6" y="7.8" width="4.6" height="4.6" rx="0.8" />
+          <rect x="7.8" y="7.8" width="4.6" height="4.6" rx="0.8" />
+        </>
+      )}
+      {name === 'single' && (
+        <>
+          <rect x="1.6" y="1.6" width="10.8" height="4.6" rx="0.8" />
+          <rect x="1.6" y="7.8" width="10.8" height="4.6" rx="0.8" />
+        </>
+      )}
+      {name === 'list' && (
+        <>
+          <path d="M4.4 3h8.2M4.4 7h8.2M4.4 11h8.2" />
+          <circle cx="1.9" cy="3" r="0.7" fill="currentColor" stroke="none" />
+          <circle cx="1.9" cy="7" r="0.7" fill="currentColor" stroke="none" />
+          <circle cx="1.9" cy="11" r="0.7" fill="currentColor" stroke="none" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 /** Small monochrome icon for the sidebar footer; it inherits the theme colour. */
 function ProjectIcon() {
   return (
@@ -53,6 +106,23 @@ export function Sidebar({ library, rootPath, selection, onOpen, onReload, dirty 
   const { t, formatNumber } = useI18n();
   const [open, setOpen] = useState<Record<string, boolean>>(() => ({}));
   const [projectOpen, setProjectOpen] = useState(false);
+  const [pageLayout, setPageLayout] = useState<PageListLayout>(readPageListLayout);
+  const sidebarScroll = useRef<HTMLDivElement>(null);
+
+  /** Keep the scroll offset while the page list changes shape. */
+  const choosePageLayout = (next: PageListLayout) => {
+    if (next === pageLayout) return;
+    const top = sidebarScroll.current?.scrollTop ?? 0;
+    setPageLayout(next);
+    try {
+      localStorage.setItem(PAGE_LIST_KEY, next);
+    } catch {
+      // Storage can be disabled; the in-memory choice still applies.
+    }
+    requestAnimationFrame(() => {
+      if (sidebarScroll.current) sidebarScroll.current.scrollTop = top;
+    });
+  };
 
   const activeChapterKey = selection ? `${selection.volume}/${selection.chapter}` : '';
 
@@ -139,37 +209,89 @@ export function Sidebar({ library, rootPath, selection, onOpen, onReload, dirty 
                 {w}
               </div>
             ))}
-            <div className="page-grid">
-              {bodyPages.map((page, position) => {
-                const file = pickFile(page, volume);
-                const active =
-                  selection?.volume === volumeId &&
-                  selection.chapter === chapter.chapter &&
-                  selection.pageIndex === page.index;
-                const pageNo = formatNumber(position + 1);
-                return (
-                  <button
-                    type="button"
-                    key={page.index}
-                    className={`thumb ${active ? 'active' : ''} ${file ? '' : 'missing'}`}
-                    title={`${t('format.page', { page: pageNo })}${
-                      page.warnings.length ? '\n' + page.warnings.join('\n') : ''
-                    }`}
-                    onClick={() => onOpen({ volume: volumeId, chapter: chapter.chapter, pageIndex: page.index })}
-                  >
-                    {file ? (
-                      <img src={thumbUrl(file.url, 200)} alt={t('format.page', { page: pageNo })} loading="lazy" />
-                    ) : (
-                      <span>{t('sidebar.missingImage')}</span>
-                    )}
-                    <em>{pageNo}</em>
-                    {page.warnings.length > 0 && <i className="thumb-warn">!</i>}
-                    {page.annotated && <i className="thumb-dot" />}
-                    {file && <b className="thumb-lang">{langShort(file.lang)}</b>}
-                  </button>
-                );
-              })}
-            </div>
+            {pageLayout === 'list' ? (
+              <div className="page-list">
+                {bodyPages.map((page, position) => {
+                  const active =
+                    selection?.volume === volumeId &&
+                    selection.chapter === chapter.chapter &&
+                    selection.pageIndex === page.index;
+                  const pageNo = formatNumber(position + 1);
+                  const langs = [
+                    ...volume.languages,
+                    ...(Object.keys(page.files) as Lang[]).filter((l) => !volume.languages.includes(l)),
+                  ];
+                  return (
+                    <button
+                      type="button"
+                      key={page.index}
+                      className={`page-row${active ? ' is-active' : ''}`}
+                      title={`${t('format.page', { page: pageNo })}${
+                        page.warnings.length ? '\n' + page.warnings.join('\n') : ''
+                      }`}
+                      onClick={() => onOpen({ volume: volumeId, chapter: chapter.chapter, pageIndex: page.index })}
+                    >
+                      <span className="page-row-no">{pageNo}</span>
+                      <span className="page-row-langs">
+                        {langs.length ? (
+                          langs.map((lang) =>
+                            page.files[lang] ? (
+                              <span className="page-row-lang" key={lang}>
+                                {langShort(lang)}
+                              </span>
+                            ) : (
+                              <span
+                                className="page-row-lang is-missing"
+                                key={lang}
+                                title={t('sidebar.langMissing', { lang: langShort(lang) })}
+                              >
+                                {langShort(lang)}
+                              </span>
+                            ),
+                          )
+                        ) : (
+                          <span className="page-row-missing">{t('sidebar.missingImage')}</span>
+                        )}
+                        {page.warnings.length > 0 && <i className="page-row-warn">!</i>}
+                      </span>
+                      <span className="page-row-notes">{page.annotated ? '✎' : ''}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={`page-grid${pageLayout === 'single' ? ' is-single' : ''}`}>
+                {bodyPages.map((page, position) => {
+                  const file = pickFile(page, volume);
+                  const active =
+                    selection?.volume === volumeId &&
+                    selection.chapter === chapter.chapter &&
+                    selection.pageIndex === page.index;
+                  const pageNo = formatNumber(position + 1);
+                  return (
+                    <button
+                      type="button"
+                      key={page.index}
+                      className={`thumb ${active ? 'active' : ''} ${file ? '' : 'missing'}`}
+                      title={`${t('format.page', { page: pageNo })}${
+                        page.warnings.length ? '\n' + page.warnings.join('\n') : ''
+                      }`}
+                      onClick={() => onOpen({ volume: volumeId, chapter: chapter.chapter, pageIndex: page.index })}
+                    >
+                      {file ? (
+                        <img src={thumbUrl(file.url, 200)} alt={t('format.page', { page: pageNo })} loading="lazy" />
+                      ) : (
+                        <span>{t('sidebar.missingImage')}</span>
+                      )}
+                      <em>{pageNo}</em>
+                      {page.warnings.length > 0 && <i className="thumb-warn">!</i>}
+                      {page.annotated && <i className="thumb-dot" />}
+                      {file && <b className="thumb-lang">{langShort(file.lang)}</b>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -179,14 +301,39 @@ export function Sidebar({ library, rootPath, selection, onOpen, onReload, dirty 
   return (
     <aside className="sidebar">
       <div className="sidebar-head">
-        <div className="root-path" title={rootPath}>
-          {t('format.volumesChapters', {
-            volumes: formatNumber(library.volumes.length),
-            chapters: formatNumber(library.volumes.reduce((n, v) => n + v.chapters.length, 0)),
-          })}
+        <div className="sidebar-head-row">
+          <div className="root-path" title={rootPath}>
+            {t('format.volumesChapters', {
+              volumes: formatNumber(library.volumes.length),
+              chapters: formatNumber(library.volumes.reduce((n, v) => n + v.chapters.length, 0)),
+            })}
+          </div>
+          <div className="page-list-modes" role="group" aria-label={t('sidebar.pageListLayout')}>
+            {(['grid', 'single', 'list'] as const).map((mode) => {
+              const label =
+                mode === 'grid'
+                  ? t('sidebar.pageListGrid')
+                  : mode === 'single'
+                    ? t('sidebar.pageListSingle')
+                    : t('sidebar.pageListList');
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  className={`page-list-mode${pageLayout === mode ? ' is-active' : ''}`}
+                  title={label}
+                  aria-label={label}
+                  aria-pressed={pageLayout === mode}
+                  onClick={() => choosePageLayout(mode)}
+                >
+                  <PageListIcon name={mode} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
-      <div className="sidebar-scroll">
+      <div className="sidebar-scroll" ref={sidebarScroll}>
         {library.volumes.map((volume) => (
           <div className="volume" key={volume.id}>
             <div className="volume-title">

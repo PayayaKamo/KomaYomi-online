@@ -19,7 +19,7 @@ export const ja = {
   'app.tabCompare': '比較読み',
   'app.tabOriginal': '原版読み',
   'app.saveSaving': '保存中…',
-  'app.saveUnsaved': '未保存の変更',
+  'app.saveUnsaved': '未保存',
   'app.savePending': '保存待ち',
   'app.saveSaved': '保存済み',
   'app.leaveUnsaved':
@@ -185,6 +185,11 @@ export const ja = {
   'sidebar.addManga': '＋ マンガを追加',
   'sidebar.singleChapter': '全1話',
   'sidebar.missingImage': '画像なし',
+  'sidebar.pageListLayout': 'ページ一覧の表示',
+  'sidebar.pageListGrid': '2列サムネイル',
+  'sidebar.pageListSingle': '1列サムネイル',
+  'sidebar.pageListList': 'リスト表示',
+  'sidebar.langMissing': '{lang} なし',
   'sidebar.addMangaTitle': 'マンガフォルダを追加',
   'sidebar.addMangaShort': '＋ マンガ',
   'sidebar.langsUnconfigured': '未設定',
@@ -319,6 +324,12 @@ export const ja = {
   'notes.copyContext': '文脈をコピー',
   'notes.copyContextTitle': '巻/話/ページ/コマとこのノートをコピー',
   'notes.filterByTag': 'タグで絞り込む',
+  'notes.type.background': '背景知識',
+  'notes.type.vocab': '単語',
+  'notes.type.rant': 'つぶやき',
+  'notes.typeLanguage': '{lang}ノート',
+  'notes.typeLabel': 'ノートの種類',
+  'notes.typeAll': 'すべて',
   'notes.toggleSource': '表示結果と Markdown ソースを切り替え',
   'notes.markdownPlaceholder': 'Markdown ノート…',
   'notes.scratchTitle': '一時メモ',
@@ -622,6 +633,10 @@ export const ja = {
   'compare.maskDefaultsHint':
     'チェックした言語はマスクをオンにしたとき既定で隠れます。設定は自動保存され、書き出しにマスクは含まれません。',
   'compare.noteCount': '{count} 件の注釈',
+  'compare.notesExpandAll': 'すべて展開',
+  'compare.notesCollapseAll': 'すべて閉じる',
+  'compare.noteSave': '保存',
+  'compare.noteCancel': 'キャンセル',
 
   /* ---- alignment modes ---- */
   'align.mode.page': 'ページ全体のオフセット',
@@ -1090,7 +1105,6 @@ export const ja = {
   'about.close': '閉じる',
 
   /* ---- 静的オンライン版 ---- */
-  'online.banner': 'オンライン版 · データはこのブラウザ内のみ',
   'online.unsupported': 'この機能はローカル完全版 KomaYomi が必要です。',
   'online.noProject': 'このブラウザではまだプロジェクトを開いていません。',
   'online.openTitle': 'プロジェクトを開く',

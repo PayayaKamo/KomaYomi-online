@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
-import type { AlignMode, AlignOffset, AlignPreset, Lang, PageDoc, PageEntry, Panel } from '../types';
-import { DEFAULT_OFFSET, DEFAULT_LANGUAGES, langShort } from '../types';
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
+import type { AlignMode, AlignOffset, AlignPreset, Lang, Note, NoteTypeDef, PageDoc, PageEntry, Panel } from '../types';
+import { DEFAULT_NOTE_TYPE, DEFAULT_OFFSET, DEFAULT_LANGUAGES, langShort } from '../types';
+import { noteTypeColor } from '../../shared/noteTypes';
+import { markdownExcerpt, renderMarkdown } from '../../shared/markdown';
 import { applyGroupOrder, sortPanels } from '../lib/geometry';
 import { api } from '../api';
 import type { HistorySource } from '../api';
@@ -9,6 +11,7 @@ import { langLabel, readingLabel, useI18n } from '../i18n';
 import type { MessageKey } from '../i18n';
 import { AnnotationOverlay } from './AnnotationOverlay';
 import { NoteAnchorLayer } from './NoteAnchorLayer';
+import { NoteTypeChip } from './NoteTypeChip';
 import { ANNOTATION_COLORS, ANNOTATION_TOOL_ORDER, ANNOTATION_TOOLS, AnnotationLayer } from './AnnotationLayer';
 import type { AnnotationTool } from './AnnotationLayer';
 import { CropLayer } from './CropLayer';
@@ -42,6 +45,8 @@ type Props = {
   onDetailNextPanel?: () => void;
   onDetailPrevPage?: () => void;
   onDetailNextPage?: () => void;
+  /** User-defined note categories (library level); built-ins and languages are derived. */
+  noteTypes?: NoteTypeDef[];
   /** Viewer mode: hide authoring tools and skip writes. */
   readOnly?: boolean;
 };
@@ -205,6 +210,7 @@ export function CompareTab({
   onDetailNextPanel,
   onDetailPrevPage,
   onDetailNextPage,
+  noteTypes = [],
   readOnly = false,
 }: Props) {
   const { t, formatNumber } = useI18n();
@@ -232,6 +238,15 @@ export function CompareTab({
   );
   const [maskPrefs, setMaskPrefs] = useState<MaskPrefs>(loadMaskPrefs);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  /* Panel notes: folded by default, per-note expand state and one inline editor at a time. */
+  const [noteOpen, setNoteOpen] = useState<Record<string, boolean>>({});
+  const [noteEditId, setNoteEditId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  useEffect(() => {
+    setNoteOpen({});
+    setNoteEditId(null);
+    setNoteDraft('');
+  }, [doc.volume, doc.chapter, doc.pageIndex]);
   const [maskDefaultsOpen, setMaskDefaultsOpen] = useState(false);
   // Drag-to-reorder the language bar (only enabled languages are draggable)
   const [langDragIndex, setLangDragIndex] = useState<number | null>(null);
@@ -695,6 +710,35 @@ export function CompareTab({
     return !lastTapRef.current;
   };
 
+  const noteTypeOf = (note: Note) => note.type ?? DEFAULT_NOTE_TYPE;
+  const setNotesOpen = (list: Note[], open: boolean) =>
+    setNoteOpen((prev) => {
+      const next = { ...prev };
+      for (const note of list) next[note.id] = open;
+      return next;
+    });
+  const startNoteEdit = (note: Note) => {
+    if (readOnly) return;
+    setNoteOpen((prev) => ({ ...prev, [note.id]: true }));
+    setNoteEditId(note.id);
+    setNoteDraft(note.text);
+  };
+  const cancelNoteEdit = () => {
+    setNoteEditId(null);
+    setNoteDraft('');
+  };
+  const saveNoteEdit = (id: string) => {
+    const text = noteDraft.trim();
+    if (!text) return;
+    mutate((d) => ({
+      ...d,
+      notes: d.notes.map((note) =>
+        note.id === id ? { ...note, text, updatedAt: new Date().toISOString() } : note,
+      ),
+    }));
+    cancelNoteEdit();
+  };
+
   const changeMode = (next: AlignMode) => {
     setPendingAnchor(null);
     // Whole page / current panel are the common choices; remember them as the default scope for the next page
@@ -846,7 +890,14 @@ export function CompareTab({
             />
           )}
         </div>
-        <NoteAnchorLayer notes={doc.notes} panel={panel} lang={lang} offset={off} />
+        <NoteAnchorLayer
+          notes={doc.notes}
+          panel={panel}
+          lang={lang}
+          offset={off}
+          languages={activeLangs}
+          noteTypes={noteTypes}
+        />
         {isHidden(panel.id, lang) && (
           <div
             className={`lang-mask ${maskPrefs.style}`}
@@ -1649,18 +1700,104 @@ export function CompareTab({
               )}
 
               {notes.length > 0 && (
-                <ul className="panel-notes">
-                  {notes.map((n) => (
-                    <li key={n.id}>
-                      {n.tags.map((t) => (
-                        <span className="tag" key={t}>
-                          {t}
-                        </span>
-                      ))}
-                      <span>{n.text}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="panel-notes-wrap">
+                  {notes.length > 1 && (
+                    <div className="panel-notes-tools">
+                      <button type="button" className="btn tiny" onClick={() => setNotesOpen(notes, true)}>
+                        {t('compare.notesExpandAll')}
+                      </button>
+                      <button type="button" className="btn tiny" onClick={() => setNotesOpen(notes, false)}>
+                        {t('compare.notesCollapseAll')}
+                      </button>
+                    </div>
+                  )}
+                  <ul className="panel-notes">
+                    {notes.map((n) => {
+                      const typeId = noteTypeOf(n);
+                      const open = noteOpen[n.id] ?? false;
+                      const editing = noteEditId === n.id;
+                      return (
+                        <li
+                          key={n.id}
+                          className={`panel-note note-type-surface${open ? ' open' : ''}`}
+                          style={{ '--type-color': noteTypeColor(typeId, activeLangs, noteTypes) } as CSSProperties}
+                          onDoubleClick={(e) => {
+                            if (readOnly) return;
+                            e.stopPropagation();
+                            startNoteEdit(n);
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className="panel-note-head"
+                            aria-expanded={open}
+                            onClick={() => setNoteOpen((prev) => ({ ...prev, [n.id]: !open }))}
+                          >
+                            <NoteTypeChip
+                              id={typeId}
+                              languages={activeLangs}
+                              customTypes={noteTypes}
+                              selected
+                              title={t('notes.typeLabel')}
+                            />
+                            <span className="panel-note-summary">{markdownExcerpt(n.text, 80)}</span>
+                            <span className="panel-note-caret" aria-hidden="true">
+                              {open ? '▾' : '▸'}
+                            </span>
+                          </button>
+                          {open &&
+                            (editing ? (
+                              <div className="panel-note-editor" onDoubleClick={(e) => e.stopPropagation()}>
+                                <textarea
+                                  autoFocus
+                                  value={noteDraft}
+                                  onChange={(e) => setNoteDraft(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') {
+                                      e.preventDefault();
+                                      cancelNoteEdit();
+                                    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                      e.preventDefault();
+                                      saveNoteEdit(n.id);
+                                    }
+                                  }}
+                                />
+                                <div className="panel-note-actions">
+                                  <button type="button" className="btn tiny" onClick={cancelNoteEdit}>
+                                    {t('compare.noteCancel')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn tiny primary"
+                                    disabled={!noteDraft.trim()}
+                                    onClick={() => saveNoteEdit(n.id)}
+                                  >
+                                    {t('compare.noteSave')}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div
+                                  className="md-body panel-note-body"
+                                  dangerouslySetInnerHTML={{ __html: renderMarkdown(n.text) }}
+                                />
+                                {n.tags.length > 0 && (
+                                  <div className="panel-note-tags">
+                                    {n.tags.map((tag) => (
+                                      <span className="tag" key={tag}>
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            ))}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               )}
             </article>
           );
@@ -1677,6 +1814,7 @@ export function CompareTab({
           index={detailIndex}
           total={ordered.length}
           langs={activeLangs}
+          noteTypes={noteTypes}
           maskStyle={maskPrefs.style}
           isMasked={isHidden}
           reveal={(panelId, lang) => setRevealed((r) => ({ ...r, [revealKey(panelId, lang)]: true }))}

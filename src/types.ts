@@ -18,6 +18,8 @@ export {
   ALIGN_MODE_HINT,
   SINGLE_CHAPTER,
   PAGE_KINDS,
+  BUILTIN_NOTE_TYPES,
+  DEFAULT_NOTE_TYPE,
 } from '../shared/types';
 export type {
   AlignMode,
@@ -40,6 +42,7 @@ export type {
   Note,
   NoteImage,
   NoteSource,
+  NoteTypeDef,
   PageDoc,
   PageEntry,
   PageKind,

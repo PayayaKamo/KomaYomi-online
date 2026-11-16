@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AlignOffset, Lang, Note, Panel } from '../types';
+import type { AlignOffset, Lang, Note, NoteTypeDef, Panel } from '../types';
+import { DEFAULT_NOTE_TYPE } from '../types';
 import { groupAnchoredNotes, pagePointToPane } from '../../shared/noteAnchors.ts';
 import { renderMarkdown } from '../../shared/markdown.ts';
+import { noteTypeColor } from '../../shared/noteTypes.ts';
 import { langLabel, useI18n } from '../i18n';
 
 type Props = {
@@ -11,31 +13,22 @@ type Props = {
   /** Alignment offset of this pane, so pins follow the artwork exactly like annotations. */
   offset: AlignOffset;
   zoom?: number;
+  /** Language order used to colour `lang:*` categories consistently with the notes panel. */
+  languages?: readonly Lang[];
+  noteTypes?: readonly NoteTypeDef[];
 };
-
-/** Same palette as the desktop note categories, custom types get a neutral accent. */
-const TYPE_COLORS: Record<string, string> = {
-  background: '#4c7dd8',
-  vocab: '#d9942c',
-  rant: '#d2574a',
-};
-
-function colorFor(type?: string): string {
-  if (!type) return '#6b7280';
-  if (type.startsWith('lang:')) return '#2f9c8f';
-  return TYPE_COLORS[type] ?? '#8a6dd8';
-}
 
 /**
  * Read-only layer of note pins for the online edition.
  * The desktop app can drag pins around; here the goal is to browse a demo project, so a pin
  * opens a small popover with the notes pinned at that spot instead of editing their position.
  */
-export function NoteAnchorLayer({ notes, panel, lang, offset, zoom = 1 }: Props) {
+export function NoteAnchorLayer({ notes, panel, lang, offset, zoom = 1, languages = [], noteTypes = [] }: Props) {
   const { t } = useI18n();
   const [openKey, setOpenKey] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const groups = groupAnchoredNotes(notes, panel, lang);
+  const colorFor = (type?: string) => noteTypeColor(type ?? DEFAULT_NOTE_TYPE, languages, noteTypes);
 
   useEffect(() => {
     if (!openKey) return;

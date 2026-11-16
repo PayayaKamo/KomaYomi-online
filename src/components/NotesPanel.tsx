@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ClipboardEvent, DragEvent } from 'react';
-import type { Note, NoteImage, NoteSource, PageDoc, Panel } from '../types';
+import type { ClipboardEvent, CSSProperties, DragEvent } from 'react';
+import type { Lang, Note, NoteImage, NoteSource, PageDoc, Panel } from '../types';
 import type { Library } from '../types';
+import { DEFAULT_NOTE_TYPE } from '../types';
 import { newNote, sourceDomain, uid } from '../lib/geometry';
+import { noteTypeColor, noteTypeIds } from '../../shared/noteTypes';
 import { renderMarkdown } from '../../shared/markdown';
 import { api } from '../api';
 import type { NotesIndex } from '../api';
 import type { Selection } from '../hooks/usePage';
 import { useI18n } from '../i18n';
 import type { MessageKey } from '../i18n';
+import { noteTypeLabel } from '../lib/noteTypeLabel';
+import { NoteTypeChip } from './NoteTypeChip';
 
 type Props = {
   doc: PageDoc | null;
@@ -17,6 +21,8 @@ type Props = {
   mutate: (fn: (doc: PageDoc) => PageDoc) => void;
   tagStats: { tag: string; count: number }[];
   library: Library | null;
+  /** Live language order from the compare bar, so `lang:*` note colours match. */
+  languages?: Lang[];
   /** Jump to a panel on some page (used by overview/search hits). */
   onJump: (sel: Selection, panelId: string | null) => void;
   onClose?: () => void;
@@ -560,6 +566,7 @@ export function NotesPanel({
   mutate,
   tagStats,
   library,
+  languages: languageOrder,
   onJump,
   onClose,
   readOnly = false,
@@ -573,6 +580,8 @@ export function NotesPanel({
   const [tagInput, setTagInput] = useState('');
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [filterSource, setFilterSource] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<string | null>(null);
+  const [noteType, setNoteType] = useState<string>(DEFAULT_NOTE_TYPE);
   const [editingId, setEditingId] = useState<string | null>(null);
   const composeRef = useRef<HTMLDivElement>(null);
   const [sourceIds, setSourceIds] = useState<Record<string, boolean>>({});
@@ -617,6 +626,7 @@ export function NotesPanel({
     setImages([]);
     setTags([]);
     setTagInput('');
+    setNoteType(DEFAULT_NOTE_TYPE);
     setSourceOpen(false);
     setSrcUrl('');
     setSrcTitle('');
@@ -699,9 +709,22 @@ export function NotesPanel({
   const notes = doc?.notes ?? [];
   const panelNotes = panel ? notes.filter((n) => n.scope === 'panel' && n.panelId === panel.id) : [];
   const pageNotes = notes.filter((n) => n.scope === 'page');
+  const languages = languageOrder?.length ? languageOrder : library?.langOrder ?? library?.languages ?? [];
+  const customTypes = library?.noteTypes ?? [];
+  const typeIds = useMemo(
+    () => noteTypeIds(languages, customTypes, notes.map((n) => n.type ?? DEFAULT_NOTE_TYPE)),
+    // `languages`/`customTypes` are re-created by the `??` fallbacks; key on their sources instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [library, languageOrder, notes],
+  );
+  const typeCount = (id: string) => notes.filter((n) => (n.type ?? DEFAULT_NOTE_TYPE) === id).length;
+  const noteTypeLabelFor = (id: string) => noteTypeLabel(id, t, customTypes);
   const shown = (list: Note[]) =>
     list.filter(
-      (n) => (!filterTag || n.tags.includes(filterTag)) && (!filterSource || sourceDomain(n.source) === filterSource),
+      (n) =>
+        (!filterType || (n.type ?? DEFAULT_NOTE_TYPE) === filterType) &&
+        (!filterTag || n.tags.includes(filterTag)) &&
+        (!filterSource || sourceDomain(n.source) === filterSource),
     );
 
   const addTag = (tag: string) => {
@@ -747,6 +770,7 @@ export function NotesPanel({
     setImages([]);
     setTags([]);
     setTagInput('');
+    setNoteType(DEFAULT_NOTE_TYPE);
     setSrcUrl('');
     setSrcTitle('');
     setSrcText('');
@@ -767,6 +791,7 @@ export function NotesPanel({
             ? {
                 ...n,
                 text: text.trim(),
+                type: noteType,
                 images: images.length ? images : undefined,
                 tags,
                 source: currentSource(),
@@ -778,14 +803,10 @@ export function NotesPanel({
       resetComposer();
       return;
     }
-    const note = newNote(
-      scope,
-      scope === 'panel' && panel ? panel.id : null,
-      text.trim(),
-      tags,
-      currentSource(),
-      images,
-    );
+    const note = {
+      ...newNote(scope, scope === 'panel' && panel ? panel.id : null, text.trim(), tags, currentSource(), images),
+      type: noteType,
+    };
     mutate((d) => ({ ...d, notes: [...d.notes, note] }));
     resetComposer();
   };
@@ -800,6 +821,7 @@ export function NotesPanel({
     setEditingId(note.id);
     setScope(note.scope);
     setText(note.text);
+    setNoteType(note.type ?? DEFAULT_NOTE_TYPE);
     setImages(note.images ?? []);
     setTags(note.tags);
     setTagInput('');
@@ -900,9 +922,24 @@ export function NotesPanel({
   );
 
   const renderNote = (note: Note) => (
-    <div className="note" key={note.id}>
+    <div
+      className="note note-type-surface"
+      key={note.id}
+      style={
+        {
+          '--type-color': noteTypeColor(note.type ?? DEFAULT_NOTE_TYPE, languages, customTypes),
+        } as CSSProperties
+      }
+    >
       <div className="note-top">
         <div className="note-tags">
+          <NoteTypeChip
+            id={note.type ?? DEFAULT_NOTE_TYPE}
+            languages={languages}
+            customTypes={customTypes}
+            selected
+            title={t('notes.typeLabel')}
+          />
           {note.tags.map((tag) => (
             <button
               type="button"
@@ -1319,6 +1356,18 @@ export function NotesPanel({
                 {t('notes.copyPageContext')}
               </button>
             </div>
+            <div className="note-type-row" role="group" aria-label={t('notes.typeLabel')}>
+              {typeIds.map((id) => (
+                <NoteTypeChip
+                  key={id}
+                  id={id}
+                  languages={languages}
+                  customTypes={customTypes}
+                  selected={noteType === id}
+                  onClick={() => setNoteType(id)}
+                />
+              ))}
+            </div>
             <MarkdownEditor
               value={text}
               onChange={setText}
@@ -1435,10 +1484,33 @@ export function NotesPanel({
           )}
           {scratchPanel}
 
+          <div className="note-type-filter" role="group" aria-label={t('notes.typeLabel')}>
+            <button
+              type="button"
+              className={`note-type-chip${filterType === null ? ' on' : ''}`}
+              aria-pressed={filterType === null}
+              onClick={() => setFilterType(null)}
+            >
+              {t('notes.typeAll')}
+            </button>
+            {typeIds.map((id) => (
+              <NoteTypeChip
+                key={id}
+                id={id}
+                languages={languages}
+                customTypes={customTypes}
+                selected={filterType === id}
+                count={typeCount(id)}
+                onClick={() => setFilterType(filterType === id ? null : id)}
+              />
+            ))}
+          </div>
+
           <div className="notes-scroll">
-            {(filterTag || filterSource) && (
+            {(filterTag || filterSource || filterType) && (
               <div className="banner info">
                 {t('notes.filterLabel')}
+                {filterType ? `${noteTypeLabelFor(filterType)} ` : ''}
                 {filterTag ? `#${filterTag} ` : ''}
                 {filterSource}
                 <button
@@ -1447,6 +1519,7 @@ export function NotesPanel({
                   onClick={() => {
                     setFilterTag(null);
                     setFilterSource(null);
+                    setFilterType(null);
                   }}
                 >
                   {t('notes.clear')}
