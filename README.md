@@ -6,10 +6,7 @@ A static, browser-only edition of [KomaYomi](https://github.com/PayayaKamo/KomaY
 
 **<https://payayakamo.github.io/KomaYomi-online/>**
 
-1. Open the site.
-2. Click **Sample project**, then **Open**.
-
-The bundled demo uses original, programmatically drawn artwork, so you can look around without preparing any files.
+The bundled sample project is being replaced and is unavailable for now — open one of your own `.mnproj` files instead.
 
 ## Run it locally
 
@@ -71,20 +68,9 @@ src/                 React UI (copied from KomaYomi, trimmed for the static edit
   static/exportHtml.ts    self-contained HTML export
   components/        Sidebar, CompareTab, PanelsTab, NotesPanel, dialogs…
 shared/              Types, schema migrations, Markdown and panel-ordering helpers
-scripts/make-sample.mjs  Regenerates public/samples/demo.mnproj from the CC0 demo artwork
 ```
 
 The UI is the same as the local app; only `src/api.ts` is replaced with a static implementation. Unsupported endpoints raise `OnlineUnsupportedError`, and the corresponding menu items are removed rather than failing at click time.
-
-### Sample project
-
-`public/samples/demo.mnproj` is generated from the CC0 "Star Cafe" demo artwork that ships with KomaYomi. Regenerate it with:
-
-```bash
-node scripts/make-sample.mjs
-```
-
-No third-party manga, scans or copyrighted material is included in this repository.
 
 ### Deployment
 

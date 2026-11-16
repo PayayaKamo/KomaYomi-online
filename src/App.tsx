@@ -15,7 +15,7 @@ import { usePage } from './hooks/usePage';
 import type { Selection } from './hooks/usePage';
 import { useOutbox } from './hooks/useOutbox';
 import { usePwaStatus } from './hooks/usePwaStatus';
-import { api, openProject } from './api';
+import { api } from './api';
 import { pushRecent } from './lib/recent';
 import { DEFAULT_LANGUAGES, READING_DIRECTIONS, isRightToLeft, isVerticalReading } from './types';
 import type { Lang, Library, ReadingDirection } from './types';
@@ -77,7 +77,6 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
-  const [sampleBusy, setSampleBusy] = useState(false);
   const [pendingPanel, setPendingPanel] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(readThemeMode);
   /** Latest page state, read by the navigation guards declared below. */
@@ -228,30 +227,6 @@ export default function App() {
     loadLibrary();
     loadTags();
   }, [loadLibrary, loadTags]);
-
-  /** The sample project ships with the site, so anyone can try the app in two clicks. */
-  const loadSample = useCallback(async () => {
-    setSampleBusy(true);
-    setLibError(null);
-    try {
-      const response = await fetch(`${import.meta.env.BASE_URL}samples/demo.mnproj`);
-      if (!response.ok) throw new Error(`Sample project not found (HTTP ${response.status}).`);
-      const file = new File([await response.blob()], 'komayomi-sample.mnproj', { type: 'application/zip' });
-      await openProject(file);
-      setSel(null);
-      const res = await api.library();
-      setLibrary(res.library);
-      setRootPath(res.root);
-      if (res.library.langOrder?.length) setLangsState(res.library.langOrder);
-      loadTags();
-      const first = res.library.volumes[0]?.chapters[0];
-      if (first) setSel({ volume: first.volume, chapter: first.chapter, pageIndex: 0 });
-    } catch (err) {
-      setLibError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSampleBusy(false);
-    }
-  }, [loadTags]);
 
   // Refresh the gallery badge once the page is first written to disk.
   useEffect(() => {
@@ -837,8 +812,6 @@ export default function App() {
               library={library}
               onOpen={openSelection}
               onOpenProject={() => setProjectOpen(true)}
-              onLoadSample={() => void loadSample()}
-              sampleBusy={sampleBusy}
             />
           ) : pageState.loading ? (
             <div className="stage-loading">{t('app.loadingPage', { page: formatNumber(sel.pageIndex + 1) })}</div>
@@ -1082,14 +1055,10 @@ function Welcome({
   library,
   onOpen,
   onOpenProject,
-  onLoadSample,
-  sampleBusy,
 }: {
   library: Library | null;
   onOpen: (sel: Selection) => void;
   onOpenProject: () => void;
-  onLoadSample: () => void;
-  sampleBusy: boolean;
 }) {
   const { t } = useI18n();
   const first = library?.volumes[0]?.chapters[0];
@@ -1114,8 +1083,9 @@ function Welcome({
           <button type="button" className={`btn large ${first ? '' : 'primary'}`} onClick={onOpenProject}>
             {t('online.openProjectButton')}
           </button>
-          <button type="button" className="btn large" onClick={onLoadSample} disabled={sampleBusy}>
-            {sampleBusy ? t('online.loadingSample') : t('online.exampleProject')}
+          {/* The bundled sample is being replaced; keep the slot until the new file ships. */}
+          <button type="button" className="btn large" disabled>
+            {t('online.exampleProjectSoon')}
           </button>
         </div>
       </div>
