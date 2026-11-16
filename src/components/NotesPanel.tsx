@@ -20,6 +20,8 @@ type Props = {
   /** Jump to a panel on some page (used by overview/search hits). */
   onJump: (sel: Selection, panelId: string | null) => void;
   onClose?: () => void;
+  /** Viewer mode: notes stay readable, but nothing may be added, edited or deleted. */
+  readOnly?: boolean;
 };
 
 /* ---------------- Note images: pasted/dropped screenshots ---------------- */
@@ -551,7 +553,17 @@ type FlatHeader =
 
 type FlatRow = FlatHeader | { kind: 'note'; note: NotesIndex['notes'][number] };
 
-export function NotesPanel({ doc, panel, panelLabel, mutate, tagStats, library, onJump, onClose }: Props) {
+export function NotesPanel({
+  doc,
+  panel,
+  panelLabel,
+  mutate,
+  tagStats,
+  library,
+  onJump,
+  onClose,
+  readOnly = false,
+}: Props) {
   const { t, formatDate, formatNumber } = useI18n();
   const [tab, setTab] = useState<'page' | 'all'>('page');
   const [scope, setScope] = useState<'page' | 'panel'>('page');
@@ -561,7 +573,8 @@ export function NotesPanel({ doc, panel, panelLabel, mutate, tagStats, library, 
   const [tagInput, setTagInput] = useState('');
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [filterSource, setFilterSource] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; text: string; images: NoteImage[] } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const composeRef = useRef<HTMLDivElement>(null);
   const [sourceIds, setSourceIds] = useState<Record<string, boolean>>({});
 
   // Source
@@ -599,6 +612,7 @@ export function NotesPanel({ doc, panel, panelLabel, mutate, tagStats, library, 
   const currentPageKey = `${doc?.chapter ?? ''}|${doc?.pageIndex ?? -1}`;
   useEffect(() => {
     setScope(panel ? 'panel' : 'page');
+    setEditingId(null);
     setText('');
     setImages([]);
     setTags([]);
@@ -712,12 +726,6 @@ export function NotesPanel({ doc, panel, panelLabel, mutate, tagStats, library, 
     if (usable.length) setImages((prev) => [...prev, ...usable]);
   };
 
-  const appendEditingImages = async (files: File[]) => {
-    const converted = await Promise.all(files.map(fileToNoteImage));
-    const usable = converted.filter((img): img is NoteImage => img !== null);
-    if (usable.length) setEditing((prev) => (prev ? { ...prev, images: [...prev.images, ...usable] } : prev));
-  };
-
   const handlePasteImages = (e: ClipboardEvent, append: (files: File[]) => Promise<void>) => {
     const files = clipboardImageFiles(e.clipboardData);
     if (!files.length) return;
@@ -733,19 +741,8 @@ export function NotesPanel({ doc, panel, panelLabel, mutate, tagStats, library, 
     void append(files);
   };
 
-  const submit = () => {
-    if (!doc) return;
-    if (!text.trim() && !images.length) return;
-    if (scope === 'panel' && !panel) return;
-    const note = newNote(
-      scope,
-      scope === 'panel' && panel ? panel.id : null,
-      text.trim(),
-      tags,
-      currentSource(),
-      images,
-    );
-    mutate((d) => ({ ...d, notes: [...d.notes, note] }));
+  const resetComposer = () => {
+    setEditingId(null);
     setText('');
     setImages([]);
     setTags([]);
@@ -756,26 +753,64 @@ export function NotesPanel({ doc, panel, panelLabel, mutate, tagStats, library, 
     setSourceOpen(false);
   };
 
+  const submit = () => {
+    if (!doc || readOnly) return;
+    if (!text.trim() && !images.length) return;
+    if (!editingId && scope === 'panel' && !panel) return;
+    if (editingId) {
+      // Editing reuses the composer: update in place, no second Markdown editor in the card.
+      const id = editingId;
+      mutate((d) => ({
+        ...d,
+        notes: d.notes.map((n) =>
+          n.id === id
+            ? {
+                ...n,
+                text: text.trim(),
+                images: images.length ? images : undefined,
+                tags,
+                source: currentSource(),
+                updatedAt: new Date().toISOString(),
+              }
+            : n,
+        ),
+      }));
+      resetComposer();
+      return;
+    }
+    const note = newNote(
+      scope,
+      scope === 'panel' && panel ? panel.id : null,
+      text.trim(),
+      tags,
+      currentSource(),
+      images,
+    );
+    mutate((d) => ({ ...d, notes: [...d.notes, note] }));
+    resetComposer();
+  };
+
   const removeNote = (id: string) => {
+    if (readOnly) return;
     mutate((d) => ({ ...d, notes: d.notes.filter((n) => n.id !== id) }));
   };
 
-  const saveEdit = () => {
-    if (!editing) return;
-    mutate((d) => ({
-      ...d,
-      notes: d.notes.map((n) =>
-        n.id === editing.id
-          ? {
-              ...n,
-              text: editing.text,
-              images: editing.images.length ? editing.images : undefined,
-              updatedAt: new Date().toISOString(),
-            }
-          : n,
-      ),
-    }));
-    setEditing(null);
+  /** Load a note into the composer at the top of the panel; the card shows no editor of its own. */
+  const startEdit = (note: Note) => {
+    setEditingId(note.id);
+    setScope(note.scope);
+    setText(note.text);
+    setImages(note.images ?? []);
+    setTags(note.tags);
+    setTagInput('');
+    setSourceOpen(false);
+    setSrcUrl(note.source?.url ?? '');
+    setSrcTitle(note.source?.title ?? '');
+    setSrcText(note.source?.text ?? '');
+    requestAnimationFrame(() => {
+      composeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      composeRef.current?.querySelector('textarea')?.focus();
+    });
   };
 
   const grabTitle = async () => {
@@ -882,35 +917,7 @@ export function NotesPanel({ doc, panel, panelLabel, mutate, tagStats, library, 
         </div>
         <span className="note-time">{formatDate(note.createdAt)}</span>
       </div>
-      {editing?.id === note.id ? (
-        <div
-          className="note-edit"
-          onPaste={(e) => handlePasteImages(e, appendEditingImages)}
-          onDragOver={(e) => {
-            if (e.dataTransfer.types.includes('Files')) e.preventDefault();
-          }}
-          onDrop={(e) => handleDropImages(e, appendEditingImages)}
-        >
-          <MarkdownEditor
-            value={editing.text}
-            onChange={(v) => setEditing({ ...editing, text: v })}
-            onSubmit={saveEdit}
-            placeholder={t('notes.markdownPlaceholder')}
-          />
-          {editing.images.length > 0 &&
-            imageStrip(editing.images, (id) =>
-              setEditing((prev) => (prev ? { ...prev, images: prev.images.filter((i) => i.id !== id) } : prev)),
-            )}
-          <div className="row-actions">
-            <button type="button" className="btn tiny primary" onClick={saveEdit}>
-              {t('common.save')}
-            </button>
-            <button type="button" className="btn tiny" onClick={() => setEditing(null)}>
-              {t('common.cancel')}
-            </button>
-          </div>
-        </div>
-      ) : sourceIds[note.id] ? (
+      {sourceIds[note.id] ? (
         <pre className="note-source">{note.text}</pre>
       ) : (
         <NoteBody text={note.text} />
@@ -929,30 +936,32 @@ export function NotesPanel({ doc, panel, panelLabel, mutate, tagStats, library, 
           {note.source.text && <em>{note.source.text}</em>}
         </div>
       )}
-      {editing?.id !== note.id && (
-        <div className="note-actions">
-          <button type="button" onClick={() => setEditing({ id: note.id, text: note.text, images: note.images ?? [] })}>
+      <div className="note-actions">
+        {!readOnly && (
+          <button type="button" onClick={() => startEdit(note)} className={editingId === note.id ? 'on' : ''}>
             {t('common.edit')}
           </button>
-          <button
-            type="button"
-            onClick={() => setSourceIds((s) => ({ ...s, [note.id]: !s[note.id] }))}
-            title={t('notes.toggleSource')}
-          >
-            {sourceIds[note.id] ? t('notes.rendered') : t('notes.source')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setContextNotes({ notes: [note], single: note })}
-            title={t('notes.copyContextTitle')}
-          >
-            {t('notes.copyContext')}
-          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setSourceIds((s) => ({ ...s, [note.id]: !s[note.id] }))}
+          title={t('notes.toggleSource')}
+        >
+          {sourceIds[note.id] ? t('notes.rendered') : t('notes.source')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setContextNotes({ notes: [note], single: note })}
+          title={t('notes.copyContextTitle')}
+        >
+          {t('notes.copyContext')}
+        </button>
+        {!readOnly && (
           <button type="button" onClick={() => removeNote(note.id)}>
             {t('common.delete')}
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 
@@ -1262,23 +1271,40 @@ export function NotesPanel({ doc, panel, panelLabel, mutate, tagStats, library, 
         </>
       ) : (
         <>
+          {readOnly ? (
+            <div className="notes-readonly">{t('mode.notesReadOnly')}</div>
+          ) : (
           <div
             className="notes-compose"
+            ref={composeRef}
             onPaste={(e) => handlePasteImages(e, appendComposerImages)}
             onDragOver={(e) => {
               if (e.dataTransfer.types.includes('Files')) e.preventDefault();
             }}
             onDrop={(e) => handleDropImages(e, appendComposerImages)}
           >
+            {editingId && (
+              <div className="notes-editing">
+                <span>{t('notes.editingNote')}</span>
+                <button type="button" className="btn tiny" onClick={resetComposer}>
+                  {t('common.cancel')}
+                </button>
+              </div>
+            )}
             <div className="scope-toggle">
-              <button type="button" className={scope === 'page' ? 'on' : ''} onClick={() => setScope('page')}>
+              <button
+                type="button"
+                className={scope === 'page' ? 'on' : ''}
+                onClick={() => setScope('page')}
+                disabled={Boolean(editingId)}
+              >
                 {t('notes.wholePage')}
               </button>
               <button
                 type="button"
                 className={scope === 'panel' ? 'on' : ''}
                 onClick={() => setScope('panel')}
-                disabled={!panel}
+                disabled={!panel || Boolean(editingId)}
                 title={panel ? '' : t('notes.selectPanelHint')}
               >
                 {panel ? panelLabel : t('notes.thisPanel')}
@@ -1401,12 +1427,13 @@ export function NotesPanel({ doc, panel, panelLabel, mutate, tagStats, library, 
               type="button"
               className="btn primary block"
               onClick={submit}
-              disabled={!text.trim() && !images.length}
+              disabled={(!text.trim() && !images.length) || readOnly}
             >
-              {t('notes.addNote')}
+              {editingId ? t('notes.saveNote') : t('notes.addNote')}
             </button>
-            {scratchPanel}
           </div>
+          )}
+          {scratchPanel}
 
           <div className="notes-scroll">
             {(filterTag || filterSource) && (

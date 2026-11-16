@@ -10,6 +10,8 @@ import type { MessageKey } from '../i18n';
 import { AnnotationOverlay } from './AnnotationOverlay';
 import { ANNOTATION_COLORS, ANNOTATION_TOOL_ORDER, ANNOTATION_TOOLS, AnnotationLayer } from './AnnotationLayer';
 import type { AnnotationTool } from './AnnotationLayer';
+import { CropLayer } from './CropLayer';
+import { PanelDetail } from './PanelDetail';
 import { useAnnSurface } from '../lib/annotationSurface';
 
 type Props = {
@@ -29,6 +31,18 @@ type Props = {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  /** Panel id whose detail view is open, or null. */
+  detailPanel: string | null;
+  onOpenDetail: (panelId: string) => void;
+  onCloseDetail: () => void;
+  /** Panel navigation that runs past a page edge; the shell lands on the neighbouring page. */
+  onStepPage: (dir: -1 | 1) => void;
+  onDetailPrevPanel?: () => void;
+  onDetailNextPanel?: () => void;
+  onDetailPrevPage?: () => void;
+  onDetailNextPage?: () => void;
+  /** Viewer mode: hide authoring tools and skip writes. */
+  readOnly?: boolean;
 };
 
 const sizeCache = new Map<string, { w: number; h: number }>();
@@ -166,42 +180,6 @@ function useImageSizes(files: Record<string, string | undefined>) {
   return sizes;
 }
 
-function CropLayer({
-  url,
-  rect,
-  offset,
-  opacity,
-  blend,
-}: {
-  url: string;
-  rect: Panel['rect'];
-  offset: AlignOffset;
-  opacity: number;
-  blend: boolean;
-}) {
-  return (
-    <div
-      className={`crop-inner ${blend ? 'blend' : ''}`}
-      style={{
-        transform: `translate(${offset.x * 100}%, ${offset.y * 100}%) scale(${offset.scale})`,
-        opacity,
-      }}
-    >
-      <img
-        src={url}
-        alt=""
-        draggable={false}
-        style={{
-          width: `${100 / rect.w}%`,
-          height: `${100 / rect.h}%`,
-          left: `${-(rect.x / rect.w) * 100}%`,
-          top: `${-(rect.y / rect.h) * 100}%`,
-        }}
-      />
-    </div>
-  );
-}
-
 export function CompareTab({
   doc,
   page,
@@ -218,6 +196,15 @@ export function CompareTab({
   canRedo,
   onUndo,
   onRedo,
+  detailPanel,
+  onOpenDetail,
+  onCloseDetail,
+  onStepPage,
+  onDetailPrevPanel,
+  onDetailNextPanel,
+  onDetailPrevPage,
+  onDetailNextPage,
+  readOnly = false,
 }: Props) {
   const { t, formatNumber } = useI18n();
   const ordered = useMemo(
@@ -299,6 +286,8 @@ export function CompareTab({
   const annAllowed = annSurface !== 'panels';
   const annotations = doc.annotations ?? [];
   const annotationsVisible = annAllowed && doc.annotationsVisible !== false && annOn;
+  /** Authoring switches off in viewer mode; existing marks stay visible. */
+  const annEditable = annAllowed && !readOnly;
   useEffect(() => {
     if (!annAllowed) {
       setAnnTool('select');
@@ -490,6 +479,7 @@ export function CompareTab({
   }, [dragging, doc.gridStep, mutate]);
 
   const startPan = (e: ReactPointerEvent<HTMLDivElement>, lang: Lang, panel: Panel) => {
+    if (readOnly) return;
     const rect = e.currentTarget.getBoundingClientRect();
     if (mode === 'anchors') {
       e.preventDefault();
@@ -668,6 +658,8 @@ export function CompareTab({
     setLangDropIndex(null);
   };
 
+  const detailIndex = detailPanel ? ordered.findIndex((p) => p.id === detailPanel) : -1;
+
   const resetLangOrder = () => {
     setLangs(allLangs.length ? [...allLangs] : [...DEFAULT_LANGUAGES]);
   };
@@ -676,10 +668,30 @@ export function CompareTab({
     if (!ordered.length) return;
     const currentIdx = ordered.findIndex((p) => selected.includes(p.id));
     const base = currentIdx < 0 ? (dir > 0 ? -1 : ordered.length) : currentIdx;
-    const nextIdx = Math.min(ordered.length - 1, Math.max(0, base + dir));
+    const nextIdx = base + dir;
+    // Past either end of the page: continue onto the neighbouring page (last/first panel)
+    // instead of stopping at the boundary. Chapter edges are handled by the shell.
+    if (nextIdx < 0 || nextIdx >= ordered.length) {
+      onStepPage(dir);
+      return;
+    }
     const target = ordered[nextIdx];
     setSelected([target.id]);
     document.getElementById(`panel-${target.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  };
+
+  /** Open the enlarged detail view; selection keeps the reading position behind it. */
+  const openDetailFor = (panel: Panel) => {
+    setSelected([panel.id]);
+    onOpenDetail(panel.id);
+  };
+  /** Double-tap fallback for touch screens, where dblclick is not reliable over masks. */
+  const lastTapRef = useRef<{ id: string; at: number } | null>(null);
+  const isDoubleTap = (panelId: string) => {
+    const now = Date.now();
+    const last = lastTapRef.current;
+    lastTapRef.current = last && last.id === panelId && now - last.at < 350 ? null : { id: panelId, at: now };
+    return !lastTapRef.current;
   };
 
   const changeMode = (next: AlignMode) => {
@@ -785,7 +797,7 @@ export function CompareTab({
       <div
         key={lang}
         className={`lang-pane ${dragging && dragLang === lang ? 'dragging' : ''} ${
-          annAllowed && annOn && !overlay && lang === annLang ? 'ann-lane' : ''
+          annEditable && annOn && !overlay && lang === annLang ? 'ann-lane' : ''
         } ${
           activeDrag?.panelId === panel.id && activeDrag.lang === lang && activeDrag.scope === 'panel'
             ? 'scope-target'
@@ -796,9 +808,9 @@ export function CompareTab({
         data-panel-id={panel.id}
         data-has-image="1"
         onPointerDown={(e) => {
-          if (annAllowed && annOn && lang !== annLang) setAnnLang(lang);
+          if (annEditable && annOn && lang !== annLang) setAnnLang(lang);
           // A drawing tool owns this pane, so it must not also start a pan.
-          if (annAllowed && annOn && annTool !== 'select') return;
+          if (annEditable && annOn && annTool !== 'select') return;
           startPan(e, lang, panel);
         }}
       >
@@ -808,7 +820,7 @@ export function CompareTab({
           className="ann-crop-layer"
           style={{ transform: `translate(${off.x * 100}%, ${off.y * 100}%) scale(${off.scale})` }}
         >
-          {annAllowed && annOn && lang === annLang ? (
+          {annEditable && annOn && lang === annLang ? (
             <AnnotationLayer
               annotations={annotations}
               visible={annotationsVisible}
@@ -898,7 +910,7 @@ export function CompareTab({
         data-panel-id={panel.id}
         data-has-image="1"
         onPointerDown={(e) => {
-          if (annAllowed && annOn && annTool !== 'select') return;
+          if (annEditable && annOn && annTool !== 'select') return;
           startPan(e, dragLang, panel);
         }}
       >
@@ -926,7 +938,7 @@ export function CompareTab({
             }%) scale(${offsetsOf(dragLang, panel).scale})`,
           }}
         >
-          {annAllowed && annOn ? (
+          {annEditable && annOn ? (
             <AnnotationLayer
               annotations={annotations}
               visible={annotationsVisible}
@@ -1170,7 +1182,8 @@ export function CompareTab({
             className={`tb-select mode mode-${mode}`}
             value={mode}
             onChange={(e) => changeMode(e.target.value as AlignMode)}
-            title={t(ALIGN_HINT_KEY[mode])}
+            title={readOnly ? t('mode.readOnlyHint') : t(ALIGN_HINT_KEY[mode])}
+            disabled={readOnly}
           >
             {ALIGN_MODES.map((m) => (
               <option key={m} value={m}>
@@ -1196,8 +1209,9 @@ export function CompareTab({
             type="button"
             className={`btn icon tiny ${alignOpen ? 'on' : ''}`}
             onClick={() => setAlignOpen((v) => !v)}
-            title={t('compare.alignSettingsTitle')}
+            title={readOnly ? t('mode.readOnlyHint') : t('compare.alignSettingsTitle')}
             aria-label={t('compare.alignSettingsTitle')}
+            disabled={readOnly}
           >
             ⚙
           </button>
@@ -1205,13 +1219,14 @@ export function CompareTab({
 
         <div className="tb-group scope-group tb-collapsible">
           <span className="tb-label">{t('compare.dragZoom')}</span>
-          <div className="seg scope-seg" title={t('compare.scopeTitle')}>
+          <div className="seg scope-seg" title={readOnly ? t('mode.readOnlyHint') : t('compare.scopeTitle')}>
             <button
               type="button"
               className={scopeOfMode === 'page' ? 'on' : ''}
               onClick={() => changeMode('page')}
               title={t('compare.scopePageTitle')}
               aria-label={t('compare.scopePageTitle')}
+              disabled={readOnly}
             >
               ▦
             </button>
@@ -1221,6 +1236,7 @@ export function CompareTab({
               onClick={() => changeMode('panel')}
               title={t('compare.scopePanelTitle')}
               aria-label={t('compare.scopePanelTitle')}
+              disabled={readOnly}
             >
               ▣
             </button>
@@ -1230,7 +1246,7 @@ export function CompareTab({
           </span>
         </div>
 
-        {annAllowed && (
+        {annEditable && (
           <div className="tb-group ann-group">
             <button
               type="button"
@@ -1360,21 +1376,21 @@ export function CompareTab({
           <span className="muted tiny">{readingLabel(doc.readingDirection)}</span>
           <button
             type="button"
-            className="btn icon tiny"
+            className="btn tiny"
             onClick={() => goTo(-1)}
             title={t('compare.prevPanel')}
             aria-label={t('compare.prevPanel')}
           >
-            ‹
+            {t('compare.prevPanel')}
           </button>
           <button
             type="button"
-            className="btn icon tiny"
+            className="btn tiny"
             onClick={() => goTo(1)}
             title={t('compare.nextPanel')}
             aria-label={t('compare.nextPanel')}
           >
-            ›
+            {t('compare.nextPanel')}
           </button>
           <button
             type="button"
@@ -1397,7 +1413,7 @@ export function CompareTab({
         </div>
       </div>
 
-      {alignOpen && (
+      {alignOpen && !readOnly && (
         <div className="align-box">
           <div className="align-hint">
             <b>{alignModeLabel(mode)}</b>
@@ -1597,6 +1613,11 @@ export function CompareTab({
                 activeDrag?.panelId === panel.id && activeDrag.scope === 'page' ? 'scope-page' : ''
               }`}
               onClick={() => setSelected([panel.id])}
+              onDoubleClick={() => openDetailFor(panel)}
+              onPointerUp={(e) => {
+                if (e.pointerType !== 'mouse' && isDoubleTap(panel.id)) openDetailFor(panel);
+              }}
+              title={t('detail.openHint')}
             >
               <div className="panel-card-head">
                 <b>{t('format.panel', { number: formatNumber(idx + 1) })}</b>
@@ -1639,6 +1660,31 @@ export function CompareTab({
           );
         })}
       </div>
+
+      {/* Detail view: one panel, every enabled language enlarged, plus its notes and
+          annotations. It owns the keyboard while open (see PanelDetail). */}
+      {detailPanel && detailIndex >= 0 && (
+        <PanelDetail
+          doc={doc}
+          page={page}
+          panel={ordered[detailIndex]}
+          index={detailIndex}
+          total={ordered.length}
+          langs={activeLangs}
+          maskStyle={maskPrefs.style}
+          isMasked={isHidden}
+          reveal={(panelId, lang) => setRevealed((r) => ({ ...r, [revealKey(panelId, lang)]: true }))}
+          annotations={annotations}
+          annotationsVisible={annotationsVisible}
+          aspectOf={(lang) => paneAspect(lang, ordered[detailIndex])}
+          offsetOf={(lang) => offsetsOf(lang, ordered[detailIndex])}
+          onClose={onCloseDetail}
+          onPrev={onDetailPrevPanel}
+          onNext={onDetailNextPanel}
+          onPrevPage={onDetailPrevPage}
+          onNextPage={onDetailNextPage}
+        />
+      )}
     </div>
   );
 }

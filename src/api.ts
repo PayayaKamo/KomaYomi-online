@@ -22,6 +22,7 @@ import type {
 import { DEFAULT_EXPORT_CONFIG, PAGE_KINDS } from './types';
 import { t } from './i18n';
 import { sortPanels } from './lib/geometry';
+import { isReadOnly } from './lib/appMode';
 import { kvGet, kvSet, allPageDocs, getPage, type ProjectMeta } from './static/db';
 import {
   buildProjectArchive,
@@ -175,11 +176,17 @@ const KEY_PRESETS = 'alignPresets';
 const KEY_LAYOUTS = 'layouts';
 const KEY_EXPORT_TEMPLATES = 'exportTemplates';
 
+/** Read mode is a viewer: reject project-data writes even if a UI path slips through. */
+function assertWritable(): void {
+  if (isReadOnly()) throw new Error(t('mode.readOnlyHint'));
+}
+
 async function listOf<T>(key: string): Promise<T[]> {
   return (await kvGet<T[]>(key)) ?? [];
 }
 
 async function saveList<T>(key: string, items: T[]): Promise<void> {
+  assertWritable();
   await kvSet(key, items);
 }
 
@@ -244,6 +251,7 @@ export const api = {
   saveVolumeDirs: (_volume: string, _dirs: Partial<Record<Lang, string | null>>) => unsupported(),
 
   saveLangOrder: async (order: Lang[] | null): Promise<{ langOrder: Lang[] }> => {
+    assertWritable();
     const library = await loadLibrary();
     const discovered = library?.languages ?? ['ja', 'zh', 'en'];
     const langOrder = normalizeLangOrder(order ?? discovered, discovered);
@@ -330,6 +338,7 @@ export const api = {
   },
 
   savePage: async (doc: PageDoc, _source: HistorySource = 'auto'): Promise<{ doc: PageDoc }> => {
+    assertWritable();
     await writePageDoc(doc);
     return { doc };
   },
@@ -487,6 +496,7 @@ export const api = {
     chapter: string,
     pageIndices?: number[],
   ): Promise<{ applied: number; droppedNotes: number }> => {
+    assertWritable();
     const template = (await listOf<PanelTemplate>(KEY_TEMPLATES)).find((item) => item.id === templateId);
     if (!template) throw new Error('Template not found.');
     const found = await findPage(volume, chapter, 0);
@@ -550,6 +560,7 @@ export const api = {
     chapter: string,
     pageIndices?: number[],
   ): Promise<{ applied: number }> => {
+    assertWritable();
     const preset = (await listOf<AlignPreset>(KEY_PRESETS)).find((item) => item.id === presetId);
     if (!preset) throw new Error('Preset not found.');
     const found = await findPage(volume, chapter, 0);

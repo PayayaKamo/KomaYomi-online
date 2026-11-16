@@ -5465,3 +5465,380 @@ kbd {
   font-size: 12px;
   white-space: pre-line;
 }
+
+/* ---------------- read-only mode ---------------- */
+.ro-chip {
+  font-size: 11px;
+  color: var(--accent, #6b8fd4);
+  border: 1px solid currentColor;
+  border-radius: 99px;
+  padding: 1px 8px;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+.mode-seg button {
+  padding: 3px 10px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.notes-readonly {
+  margin: 10px 12px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--panel-2, rgba(127, 127, 127, 0.08));
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+}
+
+.notes-editing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  border: 1px solid rgba(90, 169, 255, 0.25);
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+.notes-editing .btn {
+  margin-left: auto;
+}
+
+/* ---------------- original reading view ---------------- */
+.compare-lang-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.lang-tab {
+  flex: 0 0 auto;
+  min-width: 48px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.lang-tab.on {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.lang-tab.focus {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b1016;
+}
+
+.mask-icon {
+  margin-left: 4px;
+  font-style: normal;
+  opacity: 0.7;
+}
+
+.original-tab {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.original-viewport {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.original-pane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--canvas-grad, repeating-conic-gradient(#0000 0 25%, #00000008 0 50%) 0 0 / 16px 16px);
+  cursor: grab;
+  touch-action: none;
+}
+
+.original-pane.dragging {
+  cursor: grabbing;
+}
+
+.original-pane .crop-inner {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.original-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.original-pane.empty {
+  display: grid;
+  place-items: center;
+  cursor: default;
+}
+
+/* ---------------- panel detail view ---------------- */
+.panel-detail {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg, #0e0f12);
+  color: var(--text);
+  outline: none;
+}
+
+.pd-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.pd-back {
+  gap: 4px;
+}
+
+.pd-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pd-title b {
+  font-size: 14px;
+}
+
+.pd-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.pd-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pd-zoom button {
+  padding: 2px 7px;
+}
+
+.pd-zoom-value {
+  min-width: 48px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pd-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.pd-panes {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.pd-panes.column {
+  flex-direction: column;
+}
+
+.detail-pane {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--canvas-grad, repeating-conic-gradient(#0000 0 25%, #00000008 0 50%) 0 0 / 16px 16px);
+}
+
+.pd-panes.column .detail-pane {
+  width: 100%;
+}
+
+.detail-pane.empty {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+}
+
+.detail-zoom {
+  position: absolute;
+  inset: 0;
+  transform-origin: center top;
+}
+
+.detail-mask {
+  border-radius: 8px;
+}
+
+.ann-crop-layer {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+.ann-crop-layer svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pd-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pd-section {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.pd-note {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.pd-note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.pd-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pd-ann-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pd-ann {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  background: var(--panel-2);
+  font-size: 12px;
+}
+
+.pd-ann-swatch {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.pd-ann-kind {
+  color: var(--muted);
+}
+
+.pd-ann-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pd-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.pd-foot-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pd-foot-right {
+  margin-left: auto;
+}
+
+.pd-foot .btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .pd-foot-label {
+    display: none;
+  }
+
+  .pd-back span {
+    display: none;
+  }
+
+  .pd-scroll {
+    padding: 8px;
+  }
+}
+

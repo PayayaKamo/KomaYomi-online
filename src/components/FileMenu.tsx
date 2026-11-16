@@ -15,6 +15,8 @@ type Props = {
   onOpenProject: () => void;
   onExport: () => void;
   onSave: () => void;
+  /** Viewer mode: export stays available, saving the page or project does not. */
+  readOnly?: boolean;
 };
 
 /**
@@ -22,7 +24,17 @@ type Props = {
  * Folder scanning, template exchange and backups are intentionally absent — they need the
  * local edition, which can read and write the disk.
  */
-export function FileMenu({ library, selection, dirty, hasDoc, onOpenSelection, onOpenProject, onExport, onSave }: Props) {
+export function FileMenu({
+  library,
+  selection,
+  dirty,
+  hasDoc,
+  onOpenSelection,
+  onOpenProject,
+  onExport,
+  onSave,
+  readOnly = false,
+}: Props) {
   const { t, formatNumber: fmt } = useI18n();
   const [open, setOpen] = useState(false);
   const [recent, setRecent] = useState<RecentPage[]>([]);
@@ -299,33 +311,37 @@ export function FileMenu({ library, selection, dirty, hasDoc, onOpenSelection, o
             )}
           </div>
 
-          <div className="file-sep" />
-          <div className="file-group">{t('file.groupSave')}</div>
-          <button
-            type="button"
-            role="menuitem"
-            className="file-item"
-            disabled={!hasDoc}
-            onClick={() => {
-              setOpen(false);
-              onSave();
-            }}
-          >
-            {t('file.savePage')}
-            <kbd className="file-kbd">Ctrl+S</kbd>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="file-item"
-            onClick={() => {
-              setOpen(false);
-              onOpenProject();
-            }}
-          >
-            {t('file.saveAsProject')}
-            <kbd className="file-kbd">Ctrl+Shift+S</kbd>
-          </button>
+          {!readOnly && (
+            <>
+              <div className="file-sep" />
+              <div className="file-group">{t('file.groupSave')}</div>
+              <button
+                type="button"
+                role="menuitem"
+                className="file-item"
+                disabled={!hasDoc}
+                onClick={() => {
+                  setOpen(false);
+                  onSave();
+                }}
+              >
+                {t('file.savePage')}
+                <kbd className="file-kbd">Ctrl+S</kbd>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="file-item"
+                onClick={() => {
+                  setOpen(false);
+                  onOpenProject();
+                }}
+              >
+                {t('file.saveAsProject')}
+                <kbd className="file-kbd">Ctrl+Shift+S</kbd>
+              </button>
+            </>
+          )}
 
           <div className="file-sep" />
           <button

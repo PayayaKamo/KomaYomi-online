@@ -46,6 +46,8 @@ type Props = {
   onRedo: () => void;
   /** Library language order; the page's own files decide which columns exist. */
   allLangs: Lang[];
+  /** Viewer mode: keep panel overlays for browsing, but no add/move/resize/delete. */
+  readOnly?: boolean;
 };
 
 const HANDLES: ResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
@@ -151,6 +153,7 @@ export function PanelsTab({
   onUndo,
   onRedo,
   allLangs,
+  readOnly = false,
 }: Props) {
   const { t } = useI18n();
   const availableLangs = useMemo(() => {
@@ -179,6 +182,8 @@ export function PanelsTab({
   const annSurface = useAnnSurface();
   /** Annotations belong to the reading view by default; the workspace opts in. */
   const annAllowed = annSurface !== 'read';
+  /** Viewer mode keeps existing annotations visible but removes every authoring control. */
+  const annEditable = annAllowed && !readOnly;
 
   /* Collapsible sidebar sections share one stored state so the arrows and the
      "Display" menu always agree. */
@@ -379,6 +384,8 @@ export function PanelsTab({
     } else if (!selected.includes(panel.id)) {
       setSelected([panel.id]);
     }
+    // Read mode: selecting a panel is fine, moving or resizing it is not.
+    if (readOnly) return;
     dragRef.current = {
       id: panel.id,
       handle,
@@ -399,6 +406,8 @@ export function PanelsTab({
     // Panels and handles stop propagation themselves; this guard keeps nested markers safe.
     if ((e.target as HTMLElement).closest('.pbox')) return;
     setSelected([]);
+    // Read mode never creates panels, so there is no marquee to arm.
+    if (readOnly) return;
     const el = shotRef.current;
     if (!el || !imgLoaded) return;
     const box = el.getBoundingClientRect();
@@ -746,6 +755,8 @@ export function PanelsTab({
   const onKeyDown = (e: ReactKeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    // Viewer mode: no nudging, deleting or committing — only reading shortcuts remain.
+    if (readOnly) return;
     // Annotation focus is more specific than page-level actions: Esc only leaves the
     // annotation mode, and Delete only removes the selected annotation.
     if (e.key === 'Escape' && annSelected) {
@@ -826,8 +837,14 @@ export function PanelsTab({
               </option>
             ))}
           </select>
+          {readOnly && (
+            <span className="ro-chip" title={t('mode.readOnlyHint')}>
+              {t('mode.readBadge')}
+            </span>
+          )}
         </div>
 
+        {!readOnly && (
         <div className="tb-group tb-split">
           <button
             type="button"
@@ -862,7 +879,9 @@ export function PanelsTab({
             </>
           )}
         </div>
+        )}
 
+        {!readOnly && (
         <div className="tb-group save-group tb-edit">
           <button
             type="button"
@@ -932,6 +951,7 @@ export function PanelsTab({
             </>
           )}
         </div>
+        )}
 
         {/* Detection details are status, not controls: keep them behind ⓘ so the
             primary row stays a single line. */}
@@ -1006,7 +1026,7 @@ export function PanelsTab({
         </div>
       </div>
 
-      {singleSelected && (
+      {singleSelected && !readOnly && (
         <div className="stage-toolbar sub">
           <div className="tb-group rect-inputs">
             <span className="tb-label">{t('panels.panelRect')}</span>
@@ -1057,25 +1077,29 @@ export function PanelsTab({
       {/* One rail keeps every collapsed section visible in a single row; a folded
           section renders no body at all, so it costs no height. */}
       <div className="sec-rail">
-        <button
-          type="button"
-          className="sec-tab"
-          aria-expanded={sections.grid}
-          title={t('panels.grid')}
-          onClick={() => togglePanelSection('grid')}
-        >
-          {sections.grid ? '▾' : '▸'} {t('panels.grid')}
-        </button>
-        <button
-          type="button"
-          className="sec-tab"
-          aria-expanded={sections.template}
-          title={t('panels.templates')}
-          onClick={() => togglePanelSection('template')}
-        >
-          {sections.template ? '▾' : '▸'} {t('panels.templates')}
-          {templates.length ? ` (${formatNumber(templates.length)})` : ''}
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            className="sec-tab"
+            aria-expanded={sections.grid}
+            title={t('panels.grid')}
+            onClick={() => togglePanelSection('grid')}
+          >
+            {sections.grid ? '▾' : '▸'} {t('panels.grid')}
+          </button>
+        )}
+        {!readOnly && (
+          <button
+            type="button"
+            className="sec-tab"
+            aria-expanded={sections.template}
+            title={t('panels.templates')}
+            onClick={() => togglePanelSection('template')}
+          >
+            {sections.template ? '▾' : '▸'} {t('panels.templates')}
+            {templates.length ? ` (${formatNumber(templates.length)})` : ''}
+          </button>
+        )}
         <button
           type="button"
           className="sec-tab"
@@ -1114,7 +1138,7 @@ export function PanelsTab({
         </div>
       </div>
 
-      {sections.grid && (
+      {sections.grid && !readOnly && (
         <div className="sec-body">
           <span className="tb-label">{t('panels.grid')}</span>
           <label className="num">
@@ -1169,7 +1193,7 @@ export function PanelsTab({
         </div>
       )}
 
-      {sections.template && (
+      {sections.template && !readOnly && (
         <div className="sec-body tpl-box">
           <div className="tpl-row">
             <input
@@ -1232,7 +1256,7 @@ export function PanelsTab({
         </div>
       )}
 
-      {annAllowed && (
+      {annEditable && (
         <div className="ann-toolbar">
           <button
             type="button"
@@ -1448,7 +1472,7 @@ export function PanelsTab({
               ref={shotRef}
               onPointerDown={startMarquee}
               onDoubleClick={(e) => {
-                if (annTool !== 'select') return;
+                if (readOnly || annTool !== 'select') return;
                 if ((e.target as HTMLElement).closest('.pbox')) return;
                 const r = e.currentTarget.getBoundingClientRect();
                 addPanel({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
@@ -1460,7 +1484,7 @@ export function PanelsTab({
                 draggable={false}
                 onLoad={() => setImgLoaded(true)}
               />
-              {imgLoaded && annAllowed && (
+              {imgLoaded && annEditable && (
                 <AnnotationLayer
                   annotations={annotations}
                   visible={annotationsVisible}
