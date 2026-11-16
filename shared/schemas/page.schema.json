@@ -104,6 +104,16 @@
         "id": { "type": "string", "minLength": 1 },
         "scope": { "enum": ["page", "panel"] },
         "panelId": { "type": ["string", "null"] },
+        "type": { "type": "string" },
+        "anchor": {
+          "type": "object",
+          "required": ["x", "y", "lang"],
+          "properties": {
+            "x": { "type": "number", "minimum": 0, "maximum": 1 },
+            "y": { "type": "number", "minimum": 0, "maximum": 1 },
+            "lang": { "type": "string", "minLength": 1 }
+          }
+        },
         "text": { "type": "string" },
         "tags": {
           "type": "array",

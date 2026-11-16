@@ -1,4 +1,4 @@
-import { LANGUAGES } from './types.ts';
+import { DEFAULT_NOTE_TYPE, LANGUAGES } from './types.ts';
 
 /**
  * Version migration chain for exchange files / project manifests.
@@ -114,4 +114,50 @@ export function migratePageV0(raw: Record<string, unknown>): Record<string, unkn
   // `version` was the pre-1.0 spelling; `schemaVersion` is now the single source.
   delete migrated.version;
   return migrated;
+}
+
+/**
+ * v1 → v2: notes gained categories. Notes written before categories existed are marked as
+ * the default background type so every note has a stable id for colouring and filtering.
+ */
+export function migratePageV1(raw: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...raw, schemaVersion: 2 };
+  if (Array.isArray(out.notes)) {
+    out.notes = out.notes.map((note) => {
+      if (!isRecord(note)) return note;
+      const type = typeof note.type === 'string' && note.type.trim() ? note.type.trim() : DEFAULT_NOTE_TYPE;
+      return { ...note, type };
+    });
+  }
+  return out;
+}
+
+/**
+ * v2 → v3: annotations became language-scoped. Files from before this version stored marks
+ * in page coordinates without recording the lane they were drawn in, so there is no way to
+ * infer one; they are marked as shared and keep showing in every language instead of vanishing.
+ */
+export function migratePageV2(raw: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...raw, schemaVersion: 3 };
+  if (Array.isArray(out.annotations)) {
+    out.annotations = out.annotations.map((annotation) => {
+      if (!isRecord(annotation)) return annotation;
+      if (typeof annotation.lang === 'string' || annotation.allLangs === true) return annotation;
+      return { ...annotation, allLangs: true };
+    });
+  }
+  return out;
+}
+
+/**
+ * v3 → v4: notes may carry an anchor (point on the artwork plus its language lane).
+ * The field is optional, so existing notes stay valid without touching their content.
+ */
+export function migratePageV3(raw: Record<string, unknown>): Record<string, unknown> {
+  return { ...raw, schemaVersion: 4 };
+}
+
+/** v1 → v2: the manifest envelope only; note categories live in config/library.json. */
+export function migrateManifestV1(raw: Record<string, unknown>): Record<string, unknown> {
+  return { ...raw, schemaVersion: 2 };
 }

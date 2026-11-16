@@ -11,8 +11,9 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
-import type { Annotation, AnnotationKind, Panel, PanelRect } from '../types';
+import type { Annotation, AnnotationKind, Lang, Panel, PanelRect } from '../types';
 import { clamp01, uid } from '../lib/geometry';
+import { annotationLeader, annotationMatchesLang } from '../../shared/annotations.ts';
 import { t } from '../i18n';
 import type { MessageKey } from '../i18n';
 
@@ -93,6 +94,8 @@ type Props = {
    * passes one panel crop, so the same normalized annotations stay in sync.
    */
   viewport?: PanelRect;
+  /** Language lane of this pane; new marks are stamped with it and other lanes are hidden. */
+  lang?: Lang;
 };
 
 function panelRect(panels: Panel[], id: string | null): PanelRect {
@@ -298,6 +301,7 @@ export function AnnotationLayer({
   onSelect,
   onChange,
   viewport = PAGE_RECT,
+  lang,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [box, setBox] = useState<Box>({ w: 0, h: 0 });
@@ -354,6 +358,7 @@ export function AnnotationLayer({
       width: kind === 'text' || kind === 'badge' ? undefined : width,
       text,
       fontSize: kind === 'text' || kind === 'badge' ? DEFAULT_FONT : undefined,
+      lang,
       createdAt: now,
       updatedAt: now,
     };
@@ -480,6 +485,7 @@ export function AnnotationLayer({
   if (!visible) return null;
 
   const interactive = tool !== 'select';
+  const shown = lang ? annotations.filter((a) => annotationMatchesLang(a, lang)) : annotations;
 
   return (
     <div className="ann-layer">
@@ -495,9 +501,11 @@ export function AnnotationLayer({
           setDraft(null);
         }}
       >
-        {annotations.map((annotation) => {
+        {shown.map((annotation) => {
           const rect = annotation.scope === 'panel' ? panelRect(panels, annotation.panelId ?? null) : PAGE_RECT;
           const selected = annotation.id === selectedId;
+          const leader = annotationLeader(annotation, rect);
+          const leaderPoints = leader ? toPixels([leader.from, leader.to], PAGE_RECT, box, viewport) : null;
           return (
             <g
               key={annotation.id}
@@ -519,6 +527,26 @@ export function AnnotationLayer({
                 />
               )}
               {renderShape(annotation, rect, box, '', viewport)}
+              {leaderPoints && (
+                <g pointerEvents="none">
+                  <line
+                    x1={leaderPoints[0].x}
+                    y1={leaderPoints[0].y}
+                    x2={leaderPoints[1].x}
+                    y2={leaderPoints[1].y}
+                    stroke={annotation.color ?? color}
+                    strokeWidth={1.5}
+                    strokeDasharray="4 3"
+                    opacity={0.9}
+                  />
+                  <circle
+                    cx={leaderPoints[1].x}
+                    cy={leaderPoints[1].y}
+                    r={3}
+                    fill={annotation.color ?? color}
+                  />
+                </g>
+              )}
               {selected && selectionFrame(annotation, rect, box, annotation.color ?? color, viewport)}
             </g>
           );

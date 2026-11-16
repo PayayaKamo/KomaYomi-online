@@ -5,6 +5,7 @@ import { langLabel, useI18n } from '../i18n';
 import { renderMarkdown } from '../../shared/markdown';
 import { ANNOTATION_TOOLS } from './AnnotationLayer';
 import { AnnotationOverlay } from './AnnotationOverlay';
+import { NoteAnchorLayer } from './NoteAnchorLayer';
 import { CropLayer } from './CropLayer';
 import { useCompareLayout } from '../hooks/useCompareLayout';
 
@@ -264,8 +265,10 @@ export function PanelDetail({
                         panels={doc.panels}
                         rect={panel.rect}
                         visible={annotationsVisible}
+                        lang={lang}
                       />
                     </div>
+                    <NoteAnchorLayer notes={doc.notes} panel={panel} lang={lang} offset={offset} zoom={zoom} />
                   </div>
                 ) : (
                   <div className="pane-missing">{t('compare.missingLangImage', { lang: langLabel(lang) })}</div>

@@ -20,6 +20,7 @@ import type {
   StorageStatus,
 } from './types';
 import { DEFAULT_EXPORT_CONFIG, PAGE_KINDS } from './types';
+import { CURRENT_SCHEMA_VERSION } from '../shared/format.ts';
 import { t } from './i18n';
 import { sortPanels } from './lib/geometry';
 import { isReadOnly } from './lib/appMode';
@@ -305,7 +306,7 @@ export const api = {
       storageMode: input.mode,
       name,
       manifest: {
-        schemaVersion: 1,
+        schemaVersion: CURRENT_SCHEMA_VERSION.mnproj,
         appVersion: '0.1.0-online',
         storageMode: input.mode,
         pageCount: summary?.pages ?? 0,

@@ -1,4 +1,5 @@
-import type { Annotation, Panel, PanelRect } from '../types';
+import type { Annotation, Lang, Panel, PanelRect } from '../types';
+import { annotationLeader, annotationMatchesLang } from '../../shared/annotations.ts';
 
 const PAGE_RECT: PanelRect = { x: 0, y: 0, w: 1, h: 1 };
 
@@ -8,6 +9,8 @@ type Props = {
   /** Visible crop of the page in normalized page coordinates. */
   rect: PanelRect;
   visible?: boolean;
+  /** Language lane of this pane; marks drawn in other lanes are hidden. */
+  lang?: Lang;
 };
 
 const num = (n: number) => Math.round(n * 100) / 100;
@@ -17,8 +20,10 @@ const num = (n: number) => Math.round(n * 100) / 100;
  * Rendering rules mirror the editable layer (page/panel scope, width as a fraction of the
  * page width, font size as a fraction of the page height) so both views agree.
  */
-export function AnnotationOverlay({ annotations, panels, rect, visible = true }: Props) {
+export function AnnotationOverlay({ annotations, panels, rect, visible = true, lang }: Props) {
   if (!visible || !annotations.length) return null;
+  const shown = lang ? annotations.filter((a) => annotationMatchesLang(a, lang)) : annotations;
+  if (!shown.length) return null;
 
   const vw = 1000;
   // Keep the viewBox aspect equal to the crop so strokes and text are not distorted.
@@ -31,7 +36,7 @@ export function AnnotationOverlay({ annotations, panels, rect, visible = true }:
   const fs = (fraction: number) => Math.max(3, (fraction * vh) / rect.h);
   const mosaicId = 'ann-readonly-mosaic';
 
-  const shapes = annotations.map((a) => {
+  const shapes = shown.map((a) => {
     const scope = a.scope === 'panel' ? (panels.find((p) => p.id === a.panelId)?.rect ?? PAGE_RECT) : PAGE_RECT;
     const pts = a.points.map((p) => toView(p, scope));
     if (!pts.length) return null;
@@ -163,6 +168,28 @@ export function AnnotationOverlay({ annotations, panels, rect, visible = true }:
     }
   });
 
+  const leaders = shown.map((a) => {
+    const scope = a.scope === 'panel' ? (panels.find((p) => p.id === a.panelId)?.rect ?? PAGE_RECT) : PAGE_RECT;
+    const leader = annotationLeader(a, scope);
+    if (!leader) return null;
+    const from = toView(leader.from, PAGE_RECT);
+    const to = toView(leader.to, PAGE_RECT);
+    const color = a.color || '#e0453a';
+    return (
+      <g key={`leader-${a.id}`} stroke={color} fill="none" opacity={0.9}>
+        <line
+          x1={num(from.x)}
+          y1={num(from.y)}
+          x2={num(to.x)}
+          y2={num(to.y)}
+          strokeWidth={num(sw(0.0015))}
+          strokeDasharray="4 3"
+        />
+        <circle cx={num(to.x)} cy={num(to.y)} r={num(sw(0.004))} fill={color} stroke="none" />
+      </g>
+    );
+  });
+
   return (
     <svg className="ann-crop" viewBox={`0 0 ${vw} ${vh}`} preserveAspectRatio="none" aria-hidden="true">
       <defs>
@@ -172,6 +199,7 @@ export function AnnotationOverlay({ annotations, panels, rect, visible = true }:
           <rect x="5" y="5" width="5" height="5" fill="#6b7280" />
         </pattern>
       </defs>
+      {leaders}
       {shapes}
     </svg>
   );

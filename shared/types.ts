@@ -4,6 +4,11 @@ export const DEFAULT_LANGUAGES: readonly Lang[] = LANGUAGES;
 /** Language id: a built-in code, or the normalized folder name for other languages. */
 export type Lang = string;
 
+/** Built-in note categories; custom ids are free-form and `lang:<code>` marks language notes. */
+export const BUILTIN_NOTE_TYPES = ['background', 'vocab', 'rant'] as const;
+export type BuiltinNoteType = (typeof BUILTIN_NOTE_TYPES)[number];
+export const DEFAULT_NOTE_TYPE: BuiltinNoteType = 'background';
+
 /** Chapter name used when a rule has no {chapter} placeholder (single-chapter volumes). */
 export const SINGLE_CHAPTER = '全一话';
 
@@ -49,11 +54,18 @@ export type NoteSource = {
   text?: string;
 };
 
+/** Pin that ties a note to a spot on the page, in whole-page fractions. */
+export type NoteAnchor = { x: number; y: number; lang: Lang };
+
 export type Note = {
   id: string;
   /** page = note on the whole page; panel = note on a single panel. */
   scope: 'page' | 'panel';
   panelId: string | null;
+  /** Category id: a built-in id, `lang:<code>`, or a custom type id. Missing means legacy. */
+  type?: string;
+  /** Where the note is pinned on the page; absent when the note has no anchor. */
+  anchor?: NoteAnchor;
   text: string;
   tags: string[];
   /** Where the material came from: link, title or free-form text. */
@@ -224,6 +236,13 @@ export type Annotation = {
   anchor?: AnnotationAnchor;
   /** Draw the leader line between the annotation and its locator; defaults to true. */
   showLeader?: boolean;
+  /**
+   * Language lane the mark was drawn in. Marks are only rendered and exported for that
+   * language; absent means "every language" (legacy data and explicitly shared marks).
+   */
+  lang?: Lang;
+  /** Explicit "show in every language" choice; legacy marks without `lang` behave the same. */
+  allLangs?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -236,7 +255,8 @@ export type NoteImage = {
 };
 
 export type PageDoc = {
-  schemaVersion: 1;
+  /** Current version is 4 (note anchors/categories, annotation language lanes). */
+  schemaVersion: number;
   volume: string;
   chapter: string;
   pageIndex: number;

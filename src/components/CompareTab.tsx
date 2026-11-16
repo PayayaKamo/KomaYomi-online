@@ -8,6 +8,7 @@ import type { HistorySource } from '../api';
 import { langLabel, readingLabel, useI18n } from '../i18n';
 import type { MessageKey } from '../i18n';
 import { AnnotationOverlay } from './AnnotationOverlay';
+import { NoteAnchorLayer } from './NoteAnchorLayer';
 import { ANNOTATION_COLORS, ANNOTATION_TOOL_ORDER, ANNOTATION_TOOLS, AnnotationLayer } from './AnnotationLayer';
 import type { AnnotationTool } from './AnnotationLayer';
 import { CropLayer } from './CropLayer';
@@ -833,6 +834,7 @@ export function CompareTab({
               onSelect={setAnnSelected}
               onChange={applyAnnotations}
               viewport={panel.rect}
+              lang={lang}
             />
           ) : (
             <AnnotationOverlay
@@ -840,9 +842,11 @@ export function CompareTab({
               panels={doc.panels}
               rect={panel.rect}
               visible={annotationsVisible}
+              lang={lang}
             />
           )}
         </div>
+        <NoteAnchorLayer notes={doc.notes} panel={panel} lang={lang} offset={off} />
         {isHidden(panel.id, lang) && (
           <div
             className={`lang-mask ${maskPrefs.style}`}
@@ -951,6 +955,7 @@ export function CompareTab({
               onSelect={setAnnSelected}
               onChange={applyAnnotations}
               viewport={panel.rect}
+              lang={dragLang}
             />
           ) : (
             <AnnotationOverlay
@@ -958,6 +963,7 @@ export function CompareTab({
               panels={doc.panels}
               rect={panel.rect}
               visible={annotationsVisible}
+              lang={dragLang}
             />
           )}
         </div>

@@ -15,7 +15,9 @@ import { usePage } from './hooks/usePage';
 import type { Selection } from './hooks/usePage';
 import { useOutbox } from './hooks/useOutbox';
 import { usePwaStatus } from './hooks/usePwaStatus';
-import { api } from './api';
+import { api, openProject } from './api';
+import { fetchDemoProject, DEMO_PROJECT_NAME } from './static/demoProject';
+import { getWorkspaceSummary } from './static/projectStore';
 import { pushRecent } from './lib/recent';
 import { DEFAULT_LANGUAGES, READING_DIRECTIONS, isRightToLeft, isVerticalReading } from './types';
 import type { Lang, Library, ReadingDirection } from './types';
@@ -50,6 +52,9 @@ export default function App() {
   const [library, setLibrary] = useState<Library | null>(null);
   const [rootPath, setRootPath] = useState('');
   const [libError, setLibError] = useState<string | null>(null);
+  /** Demo download/import progress; null when idle. */
+  const [demoState, setDemoState] = useState<{ phase: 'download' | 'import'; done: number; total: number } | null>(null);
+  const [demoError, setDemoError] = useState<string | null>(null);
   const [sel, setSel] = useState<Selection | null>(null);
   const [view, setView] = useState<AppView>('panels');
   const [langs, setLangsState] = useState<Lang[]>([...DEFAULT_LANGUAGES]);
@@ -227,6 +232,66 @@ export default function App() {
     loadLibrary();
     loadTags();
   }, [loadLibrary, loadTags]);
+
+  /**
+   * Landing shortcut: download the bundled demo .mnproj, import it into IndexedDB and jump
+   * straight into the three-language compare view. Replacing an existing workspace asks first.
+   */
+  const loadDemo = useCallback(async () => {
+    if (demoState) return;
+    const current = pageRef.current;
+    if (current?.dirty && current.saveMode === 'confirm' && !window.confirm(t('app.leaveUnsaved'))) return;
+    setDemoError(null);
+    setLibError(null);
+    try {
+      const summary = await getWorkspaceSummary();
+      // The demo is already in IndexedDB: reopen it instead of downloading 65 MB again.
+      if (summary?.meta.sourceFile === DEMO_PROJECT_NAME) {
+        const loaded = await api.library();
+        setLibrary(loaded.library);
+        setRootPath(loaded.root);
+        if (loaded.library.langOrder?.length) setLangsState(loaded.library.langOrder);
+        loadTags();
+        setSelected([]);
+        detailPushed.current = false;
+        setDetailPanel(null);
+        const cachedFirst = loaded.library.volumes[0]?.chapters[0];
+        if (cachedFirst) {
+          setSel({ volume: cachedFirst.volume, chapter: cachedFirst.chapter, pageIndex: 0 });
+          setView('compare');
+        }
+        return;
+      }
+      if (summary && !window.confirm(t('online.replaceWarning'))) return;
+      setDemoState({ phase: 'download', done: 0, total: 0 });
+      const file = await fetchDemoProject((received, total) =>
+        setDemoState((prev) =>
+          prev?.phase === 'download' ? { phase: 'download', done: received, total } : prev,
+        ),
+      );
+      setDemoState({ phase: 'import', done: 0, total: 0 });
+      const result = await openProject(file, {
+        onProgress: (_phase, done, total) =>
+          setDemoState({ phase: 'import', done, total: total || 0 }),
+      });
+      setLibrary(result.library);
+      setRootPath(result.library.root);
+      if (result.library.langOrder?.length) setLangsState(result.library.langOrder);
+      loadTags();
+      setSelected([]);
+      detailPushed.current = false;
+      setDetailPanel(null);
+      const first = result.library.volumes[0]?.chapters[0];
+      if (first) {
+        setSel({ volume: first.volume, chapter: first.chapter, pageIndex: 0 });
+        setView('compare');
+      }
+    } catch (err) {
+      setDemoError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDemoState(null);
+    }
+  }, [demoState, loadTags, t]);
 
   // Refresh the gallery badge once the page is first written to disk.
   useEffect(() => {
@@ -804,7 +869,20 @@ export default function App() {
               }}
             />
           )}
-          {libError && <div className="banner error">{t('app.libraryError', { error: libError })}</div>}
+          {libError && (
+            <div className="banner error">
+              <span>{t('app.libraryError', { error: libError })}</span>
+              <button
+                type="button"
+                className="banner-close"
+                title={t('online.dismiss')}
+                aria-label={t('online.dismiss')}
+                onClick={() => setLibError(null)}
+              >
+                ×
+              </button>
+            </div>
+          )}
           {pageState.error && <div className="banner error">{pageState.error}</div>}
 
           {!sel ? (
@@ -812,6 +890,10 @@ export default function App() {
               library={library}
               onOpen={openSelection}
               onOpenProject={() => setProjectOpen(true)}
+              demoState={demoState}
+              demoError={demoError}
+              onLoadDemo={() => void loadDemo()}
+              onDismissDemoError={() => setDemoError(null)}
             />
           ) : pageState.loading ? (
             <div className="stage-loading">{t('app.loadingPage', { page: formatNumber(sel.pageIndex + 1) })}</div>
@@ -1055,13 +1137,26 @@ function Welcome({
   library,
   onOpen,
   onOpenProject,
+  demoState,
+  demoError,
+  onLoadDemo,
+  onDismissDemoError,
 }: {
   library: Library | null;
   onOpen: (sel: Selection) => void;
   onOpenProject: () => void;
+  demoState: { phase: 'download' | 'import'; done: number; total: number } | null;
+  demoError: string | null;
+  onLoadDemo: () => void;
+  onDismissDemoError: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, formatNumber } = useI18n();
   const first = library?.volumes[0]?.chapters[0];
+  const demoBusy = demoState !== null;
+  const demoPercent =
+    demoState?.phase === 'download' && demoState.total > 0
+      ? Math.min(100, Math.round((demoState.done / demoState.total) * 100))
+      : null;
   return (
     <div className="welcome">
       <div className="welcome-hero">
@@ -1080,14 +1175,54 @@ function Welcome({
               })}
             </button>
           )}
-          <button type="button" className={`btn large ${first ? '' : 'primary'}`} onClick={onOpenProject}>
+          <button
+            type="button"
+            className={`btn large ${first ? '' : 'primary'}`}
+            onClick={onLoadDemo}
+            disabled={demoBusy}
+          >
+            {demoBusy ? t('online.demoBusy') : t('online.demoButton')}
+          </button>
+          <button type="button" className="btn large" onClick={onOpenProject}>
             {t('online.openProjectButton')}
           </button>
-          {/* The bundled sample is being replaced; keep the slot until the new file ships. */}
-          <button type="button" className="btn large" disabled>
-            {t('online.exampleProjectSoon')}
-          </button>
         </div>
+        {demoBusy && (
+          <div className="demo-progress" role="status" aria-live="polite">
+            <span>
+              {demoState.phase === 'download'
+                ? demoPercent === null
+                  ? t('online.demoDownloadingUnknown')
+                  : t('online.demoDownloading', { percent: demoPercent })
+                : t('online.demoImporting')}
+            </span>
+            {demoPercent !== null && <progress value={demoPercent} max={100} />}
+            {demoState.phase === 'download' && demoPercent === null && <progress />}
+            {demoState.phase === 'import' && demoState.total > 0 && (
+              <span className="muted">
+                {t('online.demoImportProgress', {
+                  done: formatNumber(demoState.done),
+                  total: formatNumber(demoState.total),
+                })}
+              </span>
+            )}
+          </div>
+        )}
+        <p className="welcome-demo-hint muted">{t('online.demoHint')}</p>
+        {demoError && (
+          <div className="banner error welcome-demo-error">
+            <span>{t('online.demoFailed', { error: demoError })}</span>
+            <button
+              type="button"
+              className="banner-close"
+              title={t('online.dismiss')}
+              aria-label={t('online.dismiss')}
+              onClick={onDismissDemoError}
+            >
+              ×
+            </button>
+          </div>
+        )}
       </div>
       <div className="welcome-steps">
         <div>

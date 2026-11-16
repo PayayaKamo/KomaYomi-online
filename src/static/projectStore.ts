@@ -1,8 +1,8 @@
 import { strToU8, unzip, zipSync } from 'fflate';
 import type { PageDoc, Lang, Library, PageEntry, ReadingDirection, VolumeEntry, PageKind } from '../../shared/types.ts';
 import { PAGE_KINDS } from '../../shared/types.ts';
-import { migrateManifestV0, migratePageV0 } from '../../shared/migrations.ts';
-import { readReadingDirection } from '../../shared/format.ts';
+import { migrateManifestV0 } from '../../shared/migrations.ts';
+import { CURRENT_SCHEMA_VERSION, prepareExchange, readReadingDirection } from '../../shared/format.ts';
 import {
   allImageIndex,
   allPageKeys,
@@ -12,7 +12,7 @@ import {
   kvDel,
   kvGet,
   kvSet,
-  putImage,
+  putImages,
   putPage,
   type ImageIndexEntry,
   type ImageRecord,
@@ -316,7 +316,7 @@ export function createDefaultDoc(
   direction: ReadingDirection = 'rtl',
 ): PageDoc {
   return {
-    schemaVersion: 1,
+    schemaVersion: CURRENT_SCHEMA_VERSION.page,
     volume,
     chapter,
     pageIndex,
@@ -360,7 +360,7 @@ function normalizeManifest(raw: unknown): { manifest: ProjectManifest; migrated:
   if (!isRecord(base.inventory)) throw new Error('manifest.json has no inventory. This is not a KomaYomi project.');
   const manifest = base as unknown as ProjectManifest;
   manifest.storageMode = manifest.storageMode === 'packaged' ? 'packaged' : 'reference';
-  manifest.schemaVersion = 1;
+  manifest.schemaVersion = CURRENT_SCHEMA_VERSION.mnproj;
   manifest.inventory.images = Array.isArray(manifest.inventory.images) ? manifest.inventory.images : [];
   manifest.inventory.volumes = Array.isArray(manifest.inventory.volumes) ? manifest.inventory.volumes : [];
   manifest.language = isRecord(manifest.language) ? manifest.language : { volumes: {}, resolved: {} };
@@ -443,9 +443,10 @@ export async function importProjectFile(file: File, options: ImportOptions = {})
     }
     try {
       const parsed = JSON.parse(new TextDecoder().decode(files[name])) as Record<string, unknown>;
-      const normalized = Number(parsed.schemaVersion) >= 1 ? parsed : migratePageV0(parsed);
-      const doc = normalized as unknown as PageDoc;
-      doc.schemaVersion = 1;
+      // Run the full migration chain (v0 → … → current) so pages written by the desktop
+      // app at any version keep their notes, categories, anchors and language lanes.
+      const prepared = prepareExchange('page', parsed, { strict: false });
+      const doc = prepared.value as unknown as PageDoc;
       doc.volume = doc.volume || parts.slice(0, -2).join('/');
       doc.chapter = doc.chapter || (parts.length >= 2 ? parts[parts.length - 2] : '');
       doc.pageIndex = pageIndex;
@@ -512,7 +513,11 @@ export async function importProjectFile(file: File, options: ImportOptions = {})
   // Rebuilding from scratch keeps the workspace consistent with the opened project.
   await clearAll();
   for (const doc of pageDocs) await putPage(pageKey(doc.volume, doc.chapter, doc.pageIndex), doc);
-  for (const record of records) await putImage(record);
+  // One transaction per batch: a few dozen image writes are much faster than one per image.
+  for (let i = 0; i < records.length; i += 12) {
+    await putImages(records.slice(i, i + 12));
+    progress('images', Math.min(records.length, i + 12), manifest.inventory.images.length);
+  }
   progress('images', records.length, manifest.inventory.images.length);
 
   const meta: ProjectMeta = {
@@ -737,7 +742,7 @@ export async function buildProjectArchive(options: ExportProjectOptions = {}): P
   }
 
   const manifest: ProjectManifest = {
-    schemaVersion: 1,
+    schemaVersion: CURRENT_SCHEMA_VERSION.mnproj,
     appVersion: '0.1.0-online',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
