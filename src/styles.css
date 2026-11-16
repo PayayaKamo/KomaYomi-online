@@ -2053,6 +2053,7 @@ body.pane-resizing * {
   flex: 1;
   overflow: auto;
   padding: 44px 40px;
+  text-align: left;
 }
 
 .welcome-hero {
@@ -2075,14 +2076,16 @@ body.pane-resizing * {
 
 .welcome-steps {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   margin-top: 42px;
   max-width: 1080px;
 }
 
 .welcome-steps > div {
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   padding: 18px 16px 16px;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -2090,12 +2093,13 @@ body.pane-resizing * {
 }
 
 .welcome-steps b {
-  position: absolute;
-  top: 14px;
-  right: 16px;
-  font-size: 26px;
+  display: block;
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1;
   color: var(--hover);
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .welcome-steps h3 {
@@ -5409,18 +5413,36 @@ kbd {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   margin-top: 10px;
 }
 
 .welcome-foot {
   max-width: 620px;
-  margin: 18px auto 0;
-  text-align: center;
+  margin: 18px 0 0;
+  text-align: left;
   font-size: 12.5px;
   line-height: 1.6;
-  /* Let the paragraph break on its own; balance keeps the last line from being a few characters. */
-  text-wrap: balance;
+}
+
+@media (max-width: 1080px) {
+  .welcome-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .welcome {
+    padding: 28px 18px 32px;
+  }
+
+  .welcome-actions .btn {
+    flex: 1 1 auto;
+  }
+
+  .welcome-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .online-chip {
