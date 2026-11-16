@@ -6,7 +6,7 @@ A static, browser-only edition of [KomaYomi](https://github.com/PayayaKamo/KomaY
 
 **<https://payayakamo.github.io/KomaYomi-online/>**
 
-The bundled sample project is being replaced and is unavailable for now — open one of your own `.mnproj` files instead.
+A sample project will be provided later — open one of your own `.mnproj` files for now.
 
 ## Run it locally
 
