@@ -32,6 +32,24 @@ Try it in two clicks: open the site, click **Sample project**, then **Open**. Th
 - **No directory scanning and no automatic panel detection.** Those need filesystem access and a server-side worker; the UI hides or labels them as local-only.
 - **Reference projects need their images attached.** A reference `.mnproj` only records where the images were; pick that folder in the import dialog to link the pages, otherwise pages appear with a missing-image placeholder.
 
+## The KomaYomi ecosystem
+
+KomaYomi ships in four forms that share the same `.mnproj` project format, so a project
+opened in one form can be exported and opened in another:
+
+| Repository | Role |
+| --- | --- |
+| [KomaYomi](https://github.com/PayayaKamo/KomaYomi) | The full desktop edition (Electron + local server): folder scanning, automatic panel detection, backups, storage providers, plugins. |
+| [KomaYomi-online](https://github.com/PayayaKamo/KomaYomi-online) | This repository — a pure browser edition. No server, no install; a deliberate subset of the desktop edition. |
+| [KomaYomi-mobile](https://github.com/PayayaKamo/KomaYomi-mobile) | The React Native mobile edition for reading on phones and tablets. |
+| [KomaYomi-docs](https://github.com/PayayaKamo/KomaYomi-docs) | The documentation site, generated automatically by CI from the desktop repository. |
+
+**What differs in this edition.** Everything runs in the browser: project data lives in
+IndexedDB, images are object URLs, and exports are downloads. That removes the server-side
+capabilities (directory scanning, automatic detection, scheduled backups, storage sync)
+but keeps reading, panel editing, notes, annotations and export. Every change is written
+back into the same `.mnproj` document model the desktop and mobile editions use.
+
 ## Development
 
 ```bash
