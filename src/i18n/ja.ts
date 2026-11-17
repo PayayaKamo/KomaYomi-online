@@ -1117,13 +1117,22 @@ export const ja = {
     'プロジェクトを開くと、このブラウザに保存されたワークスペースは置き換わります。残したい場合は先に現在のプロジェクトをダウンロードしてください。',
   'online.demoButton': 'デモプロジェクトを開く',
   'online.demoHint':
-    '同梱サンプル：3巻・日英中3言語、ノートと注釈つき。約65MB。初回のみダウンロードし、その後はこのブラウザに保存されます。',
+    'サンプル：3巻・日英中3言語、ノートと注釈つき。初回のみ GitHub から約68MBをダウンロードし、このブラウザにキャッシュします（オフラインでも開けます）。',
   'online.demoBusy': 'デモプロジェクトを読み込み中…',
   'online.demoDownloading': 'デモプロジェクトをダウンロード中… {percent}%',
   'online.demoDownloadingUnknown': 'デモプロジェクトをダウンロード中…',
   'online.demoImporting': 'ページと画像をこのブラウザにインポート中…',
   'online.demoImportProgress': '画像をインポート中 {done} / {total}',
   'online.demoFailed': 'デモプロジェクトを読み込めませんでした：{error}',
+  'online.demoRetry': '再試行',
+  'online.demoErrorOffline':
+    'オフラインで、このブラウザにはまだデモプロジェクトがキャッシュされていません。接続してから再試行してください。',
+  'online.demoErrorNetwork':
+    'デモプロジェクトのダウンロード中に接続が切れました。ネットワークを確認して再試行してください。',
+  'online.demoErrorHttp': 'ダウンロードサーバーが一時的に利用できません。しばらくしてから再試行してください。',
+  'online.demoErrorIntegrity': 'ダウンロードしたデモプロジェクトの検証に失敗しました。通信が不完全な可能性があります。再試行してください。',
+  'online.demoErrorStorage':
+    'デモプロジェクトをこのブラウザにキャッシュできませんでした。サイトの保存領域を空けてから再試行してください。',
   'online.dismiss': '閉じる',
   'online.open': 'このブラウザで開く',
   'online.importing': 'インポート中…',

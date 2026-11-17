@@ -5597,6 +5597,7 @@ kbd {
 
 .welcome-demo-error {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 10px;
   max-width: 660px;
@@ -5604,6 +5605,11 @@ kbd {
   border: 1px solid rgba(226, 96, 96, 0.3);
   border-radius: 8px;
   text-align: left;
+}
+
+.welcome-demo-error > span {
+  flex: 1 1 260px;
+  min-width: 0;
 }
 
 .banner.error {

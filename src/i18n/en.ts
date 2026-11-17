@@ -1122,13 +1122,22 @@ export const en = {
     'Opening a project replaces the workspace stored in this browser. Download the current project first if you want to keep it.',
   'online.demoButton': 'Open the demo project',
   'online.demoHint':
-    'Bundled sample: 3 volumes in Japanese, Chinese and English with notes and annotations. About 65 MB — downloaded once, then kept in this browser.',
+    'Sample project: 3 volumes in Japanese, Chinese and English with notes and annotations. About 68 MB, downloaded from GitHub the first time and then cached in this browser — it opens offline too.',
   'online.demoBusy': 'Loading the demo project…',
   'online.demoDownloading': 'Downloading the demo project… {percent}%',
   'online.demoDownloadingUnknown': 'Downloading the demo project…',
   'online.demoImporting': 'Importing pages and images into this browser…',
   'online.demoImportProgress': 'Importing images {done} / {total}',
   'online.demoFailed': 'The demo project could not be loaded: {error}',
+  'online.demoRetry': 'Retry',
+  'online.demoErrorOffline':
+    'You are offline and this browser has not cached the demo project yet. Reconnect and try again.',
+  'online.demoErrorNetwork':
+    'The connection dropped before the demo project finished downloading. Check your network and try again.',
+  'online.demoErrorHttp': 'The download server is temporarily unavailable. Please try again later.',
+  'online.demoErrorIntegrity':
+    'The downloaded demo project failed verification, so the transfer may be incomplete. Please try again.',
+  'online.demoErrorStorage': 'The demo project could not be cached in this browser. Free up site storage and try again.',
   'online.dismiss': 'Dismiss',
   'online.open': 'Open in this browser',
   'online.importing': 'Importing…',

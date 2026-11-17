@@ -16,13 +16,14 @@ import type { Selection } from './hooks/usePage';
 import { useOutbox } from './hooks/useOutbox';
 import { usePwaStatus } from './hooks/usePwaStatus';
 import { api, openProject } from './api';
-import { fetchDemoProject, DEMO_PROJECT_NAME } from './static/demoProject';
+import { DemoProjectError, fetchDemoProject, isDemoProjectSource } from './static/demoProject';
+import type { DemoFailureCode } from './static/demoProject';
 import { getWorkspaceSummary } from './static/projectStore';
 import { pushRecent } from './lib/recent';
 import { DEFAULT_LANGUAGES, READING_DIRECTIONS, isRightToLeft, isVerticalReading } from './types';
 import type { Lang, Library, ReadingDirection } from './types';
 import { langLabel, readingLabel, useI18n } from './i18n';
-import type { Locale } from './i18n';
+import type { Locale, MessageKey } from './i18n';
 import type { CSSProperties } from 'react';
 import { applyGroupOrder, sortPanels } from './lib/geometry';
 import { applyTheme, readThemeMode, saveThemeMode, watchSystemTheme } from './theme';
@@ -31,6 +32,15 @@ import { buildHash, parseDeepLink } from './lib/deepLink';
 import type { AppView } from './lib/deepLink';
 import { getAppMode, setAppMode } from './lib/appMode';
 import type { AppMode } from './lib/appMode';
+
+/** Localized, actionable message for each demo download failure. */
+const DEMO_ERROR_KEYS: Record<DemoFailureCode, MessageKey> = {
+  offline: 'online.demoErrorOffline',
+  network: 'online.demoErrorNetwork',
+  http: 'online.demoErrorHttp',
+  integrity: 'online.demoErrorIntegrity',
+  storage: 'online.demoErrorStorage',
+};
 
 /** Page delta for an arrow key under a reading direction (0 when the key does not apply). */
 function arrowPageStep(dir: ReadingDirection, key: string): number {
@@ -234,8 +244,9 @@ export default function App() {
   }, [loadLibrary, loadTags]);
 
   /**
-   * Landing shortcut: download the bundled demo .mnproj, import it into IndexedDB and jump
-   * straight into the three-language compare view. Replacing an existing workspace asks first.
+   * Landing shortcut: download the demo .mnproj on demand (or reuse the cached archive),
+   * import it into IndexedDB and jump straight into the three-language compare view.
+   * Replacing an existing workspace asks first.
    */
   const loadDemo = useCallback(async () => {
     if (demoState) return;
@@ -245,8 +256,8 @@ export default function App() {
     setLibError(null);
     try {
       const summary = await getWorkspaceSummary();
-      // The demo is already in IndexedDB: reopen it instead of downloading 65 MB again.
-      if (summary?.meta.sourceFile === DEMO_PROJECT_NAME) {
+      // The demo is already in IndexedDB: reopen it instead of importing 68 MB again.
+      if (isDemoProjectSource(summary?.meta.sourceFile)) {
         const loaded = await api.library();
         setLibrary(loaded.library);
         setRootPath(loaded.root);
@@ -287,7 +298,13 @@ export default function App() {
         setView('compare');
       }
     } catch (err) {
-      setDemoError(err instanceof Error ? err.message : String(err));
+      setDemoError(
+        err instanceof DemoProjectError
+          ? t(DEMO_ERROR_KEYS[err.code])
+          : err instanceof Error
+            ? err.message
+            : String(err),
+      );
     } finally {
       setDemoState(null);
     }
@@ -1216,6 +1233,9 @@ function Welcome({
         {demoError && (
           <div className="banner error welcome-demo-error">
             <span>{t('online.demoFailed', { error: demoError })}</span>
+            <button type="button" className="btn small" onClick={onLoadDemo} disabled={demoBusy}>
+              {t('online.demoRetry')}
+            </button>
             <button
               type="button"
               className="banner-close"

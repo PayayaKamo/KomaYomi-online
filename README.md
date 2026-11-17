@@ -6,7 +6,7 @@ A static, browser-only edition of [KomaYomi](https://github.com/PayayaKamo/KomaY
 
 **<https://payayakamo.github.io/KomaYomi-online/>**
 
-Click **Open the demo project** on the landing page to load the bundled three-volume, three-language sample with notes, annotations and note pins (about 65 MB; downloaded once, then kept in the browser). You can also open your own `.mnproj` file.
+Click **Open the demo project** on the landing page to load the three-volume, three-language sample with notes, annotations and note pins. The roughly 68 MB archive is not part of the site: it is downloaded on demand from GitHub, verified (size, ZIP signature, SHA-256) and cached in IndexedDB, so repeat visits and offline use skip the download. You can also open your own `.mnproj` file.
 
 ## Run it locally
 
